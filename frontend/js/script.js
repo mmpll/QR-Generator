@@ -6,12 +6,35 @@ window.state = {
     digit: 8 // ค่าเริ่มต้นสำหรับโหมด Custom
 };
 
+function goHome() {
+    window.location.href = "config.html";
+}
+
+function goHistory() {
+    window.location.href = "history.html";
+}
+
 const LAYOUT_MAP = {
     "STD": 40,
     "M": 40,
     "S": 60,
     "SS": 100
 };
+
+function saveToHistory(pdfUrl, excelUrl, config) {
+    let history = JSON.parse(localStorage.getItem("qr_history") || "[]");
+    const newEntry = {
+        id: Date.now(),
+        date: new Date().toLocaleString('th-TH'),
+        pdf: pdfUrl,
+        excel: excelUrl,
+        size: config.size,
+        qty: config.quantity
+    };
+    history.unshift(newEntry); 
+    localStorage.setItem("qr_history", JSON.stringify(history));
+    console.log("บันทึกประวัติเรียบร้อย:", newEntry);
+}
 
 /* ============================================================
    2. HELPER FUNCTIONS (ใส่ไว้ด้านบนเพื่อให้เรียกใช้ง่าย)
@@ -67,7 +90,6 @@ function updateSummary() {
    ============================================================ */
   async function generatePreviewAndGo() {
       const config = collectConfig();
-    
       const loading = document.getElementById("loadingScreen");
       if (loading) loading.style.display = "flex";
 
@@ -93,7 +115,8 @@ function updateSummary() {
             if (data.codes) {
                 localStorage.setItem("latest_codes", JSON.stringify(data.codes));
             }
-
+            
+            saveToHistory(data.pdf_url, data.excel_url || "", config);
             console.log("บันทึก URL สำเร็จ กำลังย้ายไปหน้า Preview...");
             window.location.href = "preview.html"; 
             
@@ -267,5 +290,60 @@ if (window.location.pathname.includes("success.html")) {
 
         document.getElementById("btn-download-pdf")?.addEventListener("click", downloadPDF);
         document.getElementById("btn-download-excel")?.addEventListener("click", downloadExcel);
+    });
+}
+
+
+/* ============================================================
+   6. HISTORY PAGE LOGIC
+   ============================================================ */  
+if (window.location.pathname.includes("history.html")) {
+    document.addEventListener("DOMContentLoaded", () => {
+        const historyList = document.getElementById("historyList");
+        const emptyState = document.getElementById("emptyState");
+        
+        let history = JSON.parse(localStorage.getItem("qr_history") || "[]");
+        
+        if (history.length === 0) {
+            if (emptyState) emptyState.style.display = "block";
+            return;
+        }
+
+        if (emptyState) emptyState.style.display = "none";
+        if (historyList) {
+            historyList.innerHTML = "";
+            history.forEach(item => {
+                const row = document.createElement("div");
+                row.className = "history-item"; 
+                row.innerHTML = `
+                    <div class="his-info" style="display:flex; flex-direction:column;">
+                        <strong>วันที่สร้าง: ${item.date}</strong>
+                        <small>ขนาด ${item.size} | จำนวน ${item.qty} ดวง</small>
+                    </div>
+                    <div class="his-actions">
+                        <img src="../assets/img/pdf.png" class="btn-dl-pdf" data-url="${item.pdf}" style="width:30px; cursor:pointer; margin-right:10px;">
+                        <img src="../assets/img/xls.png" class="btn-dl-excel" data-url="${item.excel}" style="width:30px; cursor:pointer;">
+                    </div>
+                `;
+                historyList.appendChild(row);
+            });
+        }
+
+        const triggerDownload = (url) => {
+            if (!url) return alert("ไม่พบไฟล์");
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = url.split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        document.body.addEventListener("click", (e) => {
+            if (e.target.classList.contains("btn-dl-pdf") || e.target.classList.contains("btn-dl-excel")) {
+                const url = e.target.getAttribute("data-url");
+                triggerDownload(url);
+            }
+        });
     });
 }
