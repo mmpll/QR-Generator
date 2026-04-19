@@ -1,0 +1,245 @@
+/* ======================================================
+   TITLE
+====================================================== */
+.title p span {
+    color: #ff7a00;
+}
+
+/* ======================================================
+   PDF CONTAINER
+====================================================== */
+.pdf-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 12px auto;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* ======================================================
+   TOOLBAR (GRID = NO SHIFT 100%)
+====================================================== */
+.pdf-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 12px 18px;
+    background: #f9fafb;
+    border-bottom: 1px solid #eee;
+}
+
+/* Left */
+/* ======================================================
+   PAGE INFO (MODERN CHIP STYLE)
+====================================================== */
+.page-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 12px;
+    border-radius: 999px;
+
+    background: #fff;
+    border: 1px solid #e5e7eb;
+
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+
+    font-variant-numeric: tabular-nums;
+}
+
+/* Label */
+.page-info .label {
+    color: #6b7280;
+}
+
+/* Current page */
+.page-info .current {
+    font-weight: 700;
+    color: #111827;
+}
+
+/* Divider */
+.page-info .divider {
+    color: #9ca3af;
+}
+
+/* Total */
+.page-info .total {
+    color: #6b7280;
+}
+
+/* Right */
+.zoom-group {
+    justify-self: end;
+}
+
+/* ======================================================
+   VIEWER
+====================================================== */
+.pdf-viewer {
+    height: 590px;
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    background: #f3f4f6;
+    overflow-y: auto;
+
+    scroll-behavior: smooth;
+}
+
+/* ======================================================
+   PAGE
+====================================================== */
+.pdf-page {
+    background: #fff;
+    border-radius: 10px;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transform-origin: top center;
+
+    transition: transform 0.2s ease;
+}
+
+.pdf-page:hover {
+    transform: scale(1.01);
+}
+
+/* ======================================================
+   ZOOM GROUP (LOCKED SIZE)
+====================================================== */
+.zoom-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+
+    width: 160px;
+    /* ❗ lock group width */
+    padding: 5px;
+
+    border-radius: 999px;
+    background: rgba(243, 244, 246, 0.8);
+    backdrop-filter: blur(10px);
+
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Buttons */
+.zoom-btn {
+    width: 34px;
+    height: 34px;
+
+    flex: 0 0 34px;
+
+    border-radius: 999px;
+    border: none;
+
+    background: #fff;
+    color: #111;
+
+    font-size: 18px;
+    font-weight: 600;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.zoom-btn:hover {
+    background: #f3f4f6;
+}
+
+.zoom-btn:active {
+    transform: scale(0.92);
+}
+
+/* Zoom Level */
+.zoom-level {
+    width: 80px;
+    flex: 0 0 80px;
+
+    text-align: center;
+
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+
+    font-variant-numeric: tabular-nums;
+
+    overflow: hidden;
+}
+
+/* ======================================================
+   FOOTER
+====================================================== */
+.pdf-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 14px 18px;
+    border-top: 1px solid #eee;
+}
+
+/* ======================================================
+   BUTTONS
+====================================================== */
+.cta-btn {
+    padding: 10px 22px;
+    border-radius: 999px;
+
+    background: #000;
+    color: #fff;
+
+    font-weight: 600;
+    border: none;
+
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cta-btn:hover {
+    background: #111;
+    transform: translateY(-1px);
+}
+
+.cta-btn:active {
+    transform: scale(0.96);
+}
+
+.back-btn {
+    padding: 10px 22px;
+    border-radius: 999px;
+
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111827;
+
+    font-weight: 500;
+
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #f9fafb;
+}
+
+.back-btn:active {
+    transform: scale(0.96);
+}

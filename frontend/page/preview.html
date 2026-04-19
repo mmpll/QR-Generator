@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Preview</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style_pre.css">
+    <!-- <script src="pdf.js" defer></script> -->
+    <script src="../js/script.js" defer></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="header-container">
+        <button class="logo" onclick="goHome()">
+            HOUSE OF DEV TOOLS
+        </button>
+        <button class="history-btn" onclick="goHistory()">
+            🔍 ส่องอดีต
+        </button>
+    </header>
+    <main class="container">
+        <section class="title">
+
+            <p><span>ชีเสิร์ฟ</span>ขนาดนี้ <span> ไม่จึ้ง</span>ก็แปลกละ 🫦</p>
+
+        </section>
+
+
+
+        <div class="pdf-container">
+
+            <!-- Toolbar -->
+            <div class="pdf-toolbar">
+                <div class="page-info">
+                    <span class="label">Page</span>
+                    <span class="current" id="page-num">1</span>
+                    <span class="divider">/</span>
+                    <span class="total" id="page-count">-</span>
+                </div>
+
+                <div class="zoom-group">
+                    <button class="zoom-btn" onclick="zoomOut()">−</button>
+                    <span id="zoom-level">100%</span>
+                    <button class="zoom-btn" onclick="zoomIn()">+</button>
+                </div>
+            </div>
+
+            <!-- Viewer -->
+            <div class="pdf-viewer" id="viewer"></div>
+
+            <!-- Footer -->
+            <div class="pdf-footer">
+                <button class="back-btn">← อาจจะยังน้าา</button>
+                <button class="cta-btn">เตรียมไฟล์เลย 🥳</button>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+
+</html>

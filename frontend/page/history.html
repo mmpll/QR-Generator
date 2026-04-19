@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>History</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style_his.css" />
+    <script src="../js/script.js" defer></script>
+</head>
+
+<body>
+
+    <header class="header-container">
+        <button class="logo" onclick="goHome()">
+            HOUSE OF DEV TOOLS
+        </button>
+        <button class="history-btn" onclick="goHistory()">
+            🔍 ส่องอดีต
+        </button>
+    </header>
+
+    <!-- Title -->
+    <section class="title">
+        <h1>ประวัติ<span>ความปัง</span>ของคุณ</h1>
+        <p>เคยทำอะไรไว้บ้าง มาดูดิ เดี๋ยวตกใจ</p>
+    </section>
+
+    <!-- Card -->
+    <div class="card">
+
+        <div class="card-header">
+            <span>ทั้งหมด 0 รายการ</span>
+            <input type="text" placeholder="🔍หาของเก่าอยู่หรอ">
+        </div>
+
+        <!-- Empty State -->
+        <div class="history-list" id="historyList"></div>
+        <div class="empty" id="emptyState">
+            <h2>ว่างจัดเลยนะเนี่ย 😂</h2>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

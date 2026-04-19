@@ -1,0 +1,197 @@
+/* ======================================================
+    TYPOGRAPHY / TITLE
+====================================================== */
+.title h1 {
+  font-size: 48px;          
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.title h1 span {
+  color: #007aff;
+}
+
+.title p {
+  margin-top: 8px;
+
+  font-size: 32px;         
+  font-weight: 600;
+  line-height: 1.3;
+
+  color: #ff7a00;
+}
+
+/* ======================================================
+    CARD
+====================================================== */
+.card {
+  width: 100%;
+  max-width: 900px;       
+  margin: 30px auto;
+
+  background: #fff;
+  border-radius: 24px;
+  padding: 20px;
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* ======================================================
+    CARD HEADER
+====================================================== */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 20px;
+  color: #888;
+}
+
+.card-header input {
+  width: 180px;
+  margin-left: auto;
+}
+/* ======================================================
+    EMPTY STATE
+====================================================== */
+.empty {
+  min-height: 320px;       
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;       
+}
+
+.empty h2 {
+  font-size: 32px;          
+  font-weight: 500;
+  color: #555;
+}
+
+
+
+/*-------------Available--------------*/
+/* ======================================================
+   CARD ITEM
+====================================================== */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid #eee;
+    background: #fafafa;
+
+    transition: all 0.2s ease;
+    margin-bottom: 5px;
+}
+
+/* hover effect */
+.history-item:hover {
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* ======================================================
+   LEFT CONTENT
+====================================================== */
+.history-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111;
+}
+
+.file-date {
+    font-size: 13px;
+    color: #888;
+}
+
+/* ======================================================
+   ACTIONS
+====================================================== */
+
+.file-name {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.history-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* button base */
+.action-btn {
+    width: 36px;
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* icon inside */
+.action-btn img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    pointer-events: none; /* 👈 กัน bug click */
+}
+
+
+/* hover */
+.action-btn:hover {
+    background: #f3f4f6;
+    transform: translateY(-1px);
+}
+
+/* active */
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+/* subtle color feedback */
+.action-btn.pdf:hover {
+    border-color: #ff3b30;
+}
+
+.action-btn.excel:hover {
+    border-color: #34c759;
+}
+
+.action-btn.delete:hover {
+    border-color: #ef4444;
+}
+
+
+/* hover delete = shake */
+.action-btn.delete:hover {
+  animation: shake 0.2s infinite;
+}
+
+@keyframes shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  75% { transform: translate(-2px, 2px); }
+  100% { transform: translate(2px, 1px); }
+}

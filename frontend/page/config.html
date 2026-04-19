@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Configuration</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/style_config.css" />
+    <script src="../js/script.js" defer></script>
+</head>
+
+<body>
+    <header class="header-container">
+        <button class="logo" onclick="goHome()">
+            HOUSE OF DEV TOOLS
+        </button>
+        <button class="history-btn" onclick="goHistory()">
+            🔍 ส่องอดีต
+        </button>
+    </header>
+
+    <main class="container">
+        <section class="title-section">
+            <h1 class="title">
+                <span class="title-orange">สร้าง QR ง่ายกว่าตัดใจ</span>...มั้ง
+            </h1>
+        </section>
+
+
+        <div class="main-grid">
+
+            <!-- LEFT CARD -->
+            <div class="config-card">
+
+                <div class="card-section">
+                    <h2 class="section-title">โหมดการสร้าง</h2>
+                    <div class="mode-grid">
+                        <button class="btn-mode" id="btn-auto-gen">
+                            <div class="mode-header">
+                                <span class="mode-icon">🚀</span>
+                                <span class="mode-name">Auto Generate</span>
+                            </div>
+                            <span class="mode-desc">มีลิสต์ ID อยู่แล้ว ระบบจัดให้</span>
+                        </button>
+                        <button class="btn-mode" id="btn-custom-format">
+                            <div class="mode-header">
+                                <span class="mode-icon">🖍️</span>
+                                <span class="mode-name">Custom Format</span>
+                            </div>
+                            <span class="mode-desc">ตั้งชื่อเองได้ สายครีเอทห้ามพลาด</span>
+                        </button>
+                    </div>
+
+                    <div id="customFormatSection" class="custom-format hidden">
+
+                        <div class="format-row">
+
+                            <!-- Prefix -->
+                            <div class="format-group">
+                                <label>Prefix</label>
+                                <input type="text" placeholder="ex.ABC" class="input-prefix">
+                            </div>
+
+                            <!-- Separator -->
+                            <div class="format-group">
+                                <label>Separator</label>
+                                <div class="separator-group">
+                                    <button class="sep-btn">-</button>
+                                    <button class="sep-btn">/</button>
+                                    <button class="sep-btn">_</button>
+                                    <button class="sep-btn">None</button>
+                                </div>
+                            </div>
+
+                            <!-- Running Number -->
+                            <div class="format-group">
+                                <label>Running Number</label>
+                                <div class="digit-control">
+                                    <span>Digits:</span>
+                                    <button class="digit-btn minus">-</button>
+                                    <span id="digitValue">8</span>
+                                    <button class="digit-btn plus">+</button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card-section">
+                    <h3 class="section-title">ขนาดสติกเกอร์</h3>
+                    <div class="size-wrap">
+                        <button class="btn-size">
+                            <span class="size-label">S</span> 30×20 mm
+                        </button>
+                        <button class="btn-size  ">
+                            <span class="size-label ">M</span> 50×30 mm
+                        </button>
+                        <button class="btn-size ">
+                            <span class="size-label ">L</span> 70×50 mm
+                        </button>
+                        <button class="btn-size ">
+                            <span class="size-label ">XL</span> 70×50 mm
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">จำนวนที่อยากได้</h3>
+                    <div class="qty-wrap">
+                        <input class="qty-input" type="text" placeholder="999" />
+                        <button class="btn-qty">+50</button>
+                        <button class="btn-qty">+100</button>
+                        <button class="btn-qty">+200</button>
+                    </div>
+                </div>
+            </div>
+            <div class="config-card">
+                <div class="card-section">
+                    <h3 class="section-title">โลโก้</h3>
+
+                    <!-- Preview Box -->
+                    <div class="logo-box" id="logoBox">
+                        <img id="logoPreview" src="" alt="preview" />
+                        <span class="placeholder-text">Logo</span>
+                    </div>
+
+                    <!-- Upload Button -->
+                    <div class="upload-group">
+                        <label class="upload-btn" id="uploadBtn">
+                            <input id="logoInput" type="file" accept="image/*" hidden />
+                            <span id="uploadLabelText">⬆️ Upload Logo</span>
+                        </label>
+
+                        <p class="upload-hint" id="uploadHint">
+                            ใส่โลโก้หน่อย เดี๋ยวเขาหาว่าไม่มีตัวตน 😜
+                        </p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">รูปแบบการวาง</h3>
+                    <div class="format-paper">
+                        <button class="btn-format">
+                            <span class="size-label">ตั้ง</span>ดี มีทรง
+                        </button>
+                        <button class="btn-format  ">
+                            <span class="size-label ">นอน</span>นิ่ง แต่จริงจัง
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- SUMMARY -->
+        <footer class="footer-container">
+            <div class="summary-card" data-purpose="summary-card">
+
+                <div class="summary-content">
+                    <h4 class="summary-title">สรุปคร่าวๆ</h4>
+                    <div class="summary-row">
+
+                        <div class="summary-stats">
+                            <span class="stat-item">สร้าง <span class="fw-bold">864</span> ดวง</span>
+                            <span class="dot-divider">•</span>
+                            <span class="stat-item"><span class="fw-bold">48</span> ดวง/หน้า</span>
+                            <span class="dot-divider">•</span>
+                            <span class="stat-item">ทั้งหมด <span class="fw-bold">18</span> หน้า</span>
+                        </div>
+                        <div class="summary-range">
+                            ช่วงรหัส: <span class="range-highlight">HOD-0001 → HOD-0864</span>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <button class="primary-cta fireBtn" data-purpose="primary-cta" data-link="preview.html">
+                    สร้างพรีวิวให้ดูหน่อย <span class="emoji-large">✨</span>
+                </button>
+
+                <p class="sub-caption">
+                    กดดูพรีวิวก่อนได้ ไม่พอใจค่อยปรับจ้าาาา ✌️
+                </p>
+
+            </div>
+        </footer>
+
+    </main>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-card">
+            <div class="spinner"></div>
+
+            <h2>กำลังจัดไฟล์ให้อยู่ 😎</h2>
+            <p id="loadingText">เดี๋ยวแป๊บ...กำลังจัด QR ให้</p>
+
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

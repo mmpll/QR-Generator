@@ -1,0 +1,212 @@
+/* ======================================================
+    TITLE
+====================================================== */
+.title-his {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.title-his h1 {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.title-his p {
+    margin-top: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* accents */
+.orange { color: #ff7a00; }
+.red { color: #ff3b30; }
+.green { color: #34c759; }
+
+/* ======================================================
+    CARD
+====================================================== */
+.card {
+    width: 100%;
+    max-width: 420px;
+    margin: 30px auto;
+    padding: 24px;
+
+    background: #fff;
+    border-radius: 24px;
+    text-align: center;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* ======================================================
+    IMAGE (MEME HERO)
+====================================================== */
+.hero-wrap {
+    position: relative;
+    width: 250px;
+    margin: 20px auto;
+}
+
+.hero-img {
+    width: 100%;
+    display: block;
+}
+
+/* meme text */
+.text-left,
+.text-right {
+    position: absolute;
+    top: 10px;
+
+    font-size: 20px;
+    font-weight: 700;
+    white-space: nowrap; /* 👈 กันขึ้นบรรทัดใหม่ */
+    pointer-events: none; /* 👈 กันรบกวน interaction */
+}
+
+/* positioning */
+.text-left {
+    left: -20px;
+    transform: rotate(-25deg) translateY(-10px);
+}
+
+.text-right {
+    right: -20px;
+    transform: rotate(25deg) translateY(-10px);
+}
+
+/* ======================================================
+    SHAKE ANIMATION (STABLE)
+====================================================== */
+@keyframes shake {
+    0%   { transform: translate(0,0) rotate(var(--r)); }
+    25%  { transform: translate(-2px,1px) rotate(calc(var(--r) - 1deg)); }
+    50%  { transform: translate(2px,-1px) rotate(calc(var(--r) + 1deg)); }
+    75%  { transform: translate(-2px,2px) rotate(calc(var(--r) - 1deg)); }
+    100% { transform: translate(2px,1px) rotate(calc(var(--r) + 1deg)); }
+}
+
+.shake {
+    display: inline-block;
+    animation: shake 0.2s infinite;
+    will-change: transform; /* 👈 smooth */
+}
+
+/* angle variables */
+.text-left { --r: -25deg; }
+.text-right { --r: 25deg; }
+
+/* ======================================================
+    ICON
+====================================================== */
+.icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+/* ======================================================
+    TEXT
+====================================================== */
+.card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 12px 0 20px;
+    color: #111;
+}
+
+/* ======================================================
+    BUTTON GROUP
+====================================================== */
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ======================================================
+    DOWNLOAD BUTTON
+====================================================== */
+.download {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 14px;
+    border-radius: 14px;
+    border: 1.5px solid #e5e7eb;
+
+    background: #fafafa;
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+/* icon wrapper */
+.download span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* text */
+.download div {
+    text-align: left;
+}
+
+.download small {
+    display: block;
+    font-size: 12px;
+    color: #777;
+}
+
+/* ======================================================
+    INTERACTIONS
+====================================================== */
+.download:hover {
+    transform: translateY(-2px);
+    border-color: #007aff;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+}
+
+.download:active {
+    transform: scale(0.98);
+}
+
+/* type colors */
+.download.pdf:hover {
+    border-color: #ff3b30;
+}
+
+.download.excel:hover {
+    border-color: #34c759;
+}
+
+/* ======================================================
+    FOOT
+====================================================== */
+.foot {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #777;
+    text-align: center;
+}
+
+/* ======================================================
+    BACKGROUND DECORATION
+====================================================== */
+body > canvas {
+    position: fixed !important;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0 !important;
+}
+
+.header-container,
+.container,
+.card {
+    position: relative;
+    z-index: 1;
+}

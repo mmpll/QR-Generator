@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Dev Tools</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet" href="../css/style.css" />
+    <script src="../js/script.js" defer></script>
+</head>
+
+<body>
+    <header class="header-container">
+        <button class="logo" onclick="goHome()">
+            HOUSE OF DEV TOOLS
+        </button>
+        <button class="history-btn" onclick="goHistory()">
+            🔍 ส่องอดีต
+        </button>
+    </header>
+
+    <main class="container">
+        <section class="title-section">
+            <h1 class="main-title">
+                สวัสดีจ้า
+                <span class="gradient-text">พี่แป้ง</span>
+            </h1>
+        </section>
+
+
+
+        <p class="subtitle">
+            อย่าคิดเยอะ แค่กดก็พอ เดี๋ยวระบบคิดแทน จะล่าแบ้ 😎
+        </p>
+
+        <div class="input-group">
+            <input type="text" placeholder="ตั้งชื่อไฟล์หน่อย เดี๋ยวลืม" />
+            <button class="primary-btn fireBtn" data-link="config.html">
+                เอาให้โฮ่ง
+            </button>
+        </div>
+
+        <!-- VIDEO HERE -->
+        <div class="video-inline">
+            <video autoplay muted loop playsinline>
+                <source src="../assets/video/HoD.mp4" type="video/mp4">
+            </video>
+        </div>
+
+
+    </main>
+
+</body>
+
+</html>
