@@ -245,7 +245,7 @@ def export_excel(payload: dict):
 # =========================
 @app.get("/preview/{filename}")
 def preview_pdf(filename: str):
-     return FileResponse(os.path.join(QR_DIR, filename), media_type="application/pdf")
+     return FileResponse(os.path.join(PREVIEW_DIR, filename), media_type="application/pdf")
 
 @app.get("/excel/{filename}")
 def preview_excel(filename: str):

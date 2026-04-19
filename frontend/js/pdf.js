@@ -1,24 +1,26 @@
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 let pdfDoc = null;
 let scale = 1;
 const viewer = document.getElementById("viewer");
 
 document.addEventListener("DOMContentLoaded", () => {
     if (viewer) viewer.innerHTML = "";
-    
-    // ดึง URL
+
     let storedUrl = localStorage.getItem("pdf_url");
 
     if (!storedUrl) {
         console.error("ไม่พบ PDF URL");
         return;
     }
-    if (!storedUrl.startsWith('http')) {
-            storedUrl = `http://127.0.0.1:8000${storedUrl.startsWith('/') ? '' : '/'}${storedUrl}`;
-        }
 
-        console.log("กำลังโหลด PDF จาก:", storedUrl); 
+    console.log("กำลังโหลด PDF จาก:", storedUrl); 
+    
+    if (typeof loadPDF === "function") {
         loadPDF(storedUrl);
-  });
+    } else {
+        console.error("ไม่พบฟังก์ชัน loadPDF!");
+    }
+});
 
 function loadPDF(pdfUrl) {
     pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {

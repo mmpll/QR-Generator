@@ -63,86 +63,49 @@ function updateSummary() {
 }
 
 /* ============================================================
-   3. API INTERACTION
+   3. API INTERACTION (แก้ไขเพื่อให้เก็บค่ารหัสไว้ใช้หน้า Success)
    ============================================================ */
-// async function generatePreviewAndGo() {
-//     const config = collectConfig();
+  async function generatePreviewAndGo() {
+      const config = collectConfig();
     
-//     console.log("SEND TO API:", config);
-    
-//     const loading = document.getElementById("loadingScreen");
-//     if (loading) loading.style.display = "flex";
+      const loading = document.getElementById("loadingScreen");
+      if (loading) loading.style.display = "flex";
 
-//     try {
-//         const res = await fetch("http://127.0.0.1:8000/generate", {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify(config)
-//         });
+      console.log("SEND TO API:", config);
 
-//         const text = await res.text();
-//         console.log("RAW RESPONSE:", text);
-
-//         let data;
-//         try {
-//             data = JSON.parse(text);
-//         } catch (e) {
-//             console.error("JSON parse error:", e);
-//             alert("Server response ไม่ใช่ JSON");
-//             return;
-//         }
-
-//         if (data.pdf_url) {
-//             // เก็บ URL ไว้ใช้ในหน้า preview.html
-//             localStorage.setItem("pdf_url", data.pdf_url);
-//             window.location.href = "preview.html";
-//         } else {
-//             alert("ไม่สามารถสร้างพรีวิวได้ กรุณาลองใหม่");
-//         }
-//     } catch (err) {
-//         console.error("API Error:", err);
-//         alert("การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
-//     } finally {
-//         if (loading) loading.style.display = "none";
-//     }
-// }
-
-async function generatePreviewAndGo() {
-    const config = collectConfig();
-
-    console.log("SEND TO API:", config);
-
-    try {
-        const res = await fetch("http://127.0.0.1:8000/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(config)
-        });
-
-        console.log("STATUS:", res.status);
-
-        const text = await res.text();
-        console.log("RAW RESPONSE:", text);
+      try {
+          const res = await fetch("http://127.0.0.1:8000/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(config)
+      });
 
         if (!res.ok) {
-            alert("Server error: " + text);
+            const errorText = await res.text();
+            alert("Server error: " + errorText);
             return;
         }
 
-        const data = JSON.parse(text);
+        const data = await res.json();
 
         if (data.pdf_url) {
-            localStorage.setItem("pdf_url", data.pdf_url);
-            window.location.href = "preview.html";
+            localStorage.setItem("pdf_url", data.pdf_url); 
+            if (data.codes) {
+                localStorage.setItem("latest_codes", JSON.stringify(data.codes));
+            }
+
+            console.log("บันทึก URL สำเร็จ กำลังย้ายไปหน้า Preview...");
+            window.location.href = "preview.html"; 
+            
         } else {
-            alert("ไม่มี pdf_url");
+            alert("ไม่ได้รับลิงก์ PDF จากระบบ กรุณาลองใหม่");
         }
 
     } catch (err) {
         console.error("🔥 FETCH ERROR:", err);
-        alert("เชื่อมต่อ server ไม่ได้จริง ๆ");
+        alert("การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    } finally {
+        if (loading) loading.style.display = "none";
     }
 }
 
@@ -250,3 +213,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateSummary();
 });
+
+/* ============================================================
+   5. SUCCESS PAGE LOGIC
+   ============================================================ */
+// ฟังก์ชันโหลด PDF
+function downloadPDF() {
+    const pdfUrl = localStorage.getItem("pdf_url");
+    if (pdfUrl) {
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = pdfUrl.split('/').pop();
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        alert("อุ๊ย! หาไฟล์ PDF ไม่เจอ ลองเจนใหม่อีกรอบนะ");
+    }
+}
+
+// ฟังก์ชันโหลด Excel
+async function downloadExcel() {
+    const rawCodes = localStorage.getItem("latest_codes");
+    if (!rawCodes) {
+        alert("หาข้อมูลรหัสไม่เจอ");
+        return;
+    }
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/export-excel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ codes: JSON.parse(rawCodes) })
+        });
+
+        const data = await res.json();
+        if (data.excel_url) {
+            window.location.href = data.excel_url;
+        } else {
+            alert("เจน Excel ไม่สำเร็จ");
+        }
+    } catch (err) {
+        console.error("Excel Error:", err);
+        alert("การเชื่อมต่อล้มเหลว ลองเช็คหลังบ้านดูนะ");
+    }
+}
+
+if (window.location.pathname.includes("success.html")) {
+    document.addEventListener("DOMContentLoaded", () => {
+        if (typeof confetti === "function") {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+
+        document.getElementById("btn-download-pdf")?.addEventListener("click", downloadPDF);
+        document.getElementById("btn-download-excel")?.addEventListener("click", downloadExcel);
+    });
+}
