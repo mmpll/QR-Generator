@@ -86,47 +86,48 @@ function updateSummary() {
 }
 
 /* ============================================================
-   3. API INTERACTION (แก้ไขเพื่อให้เก็บค่ารหัสไว้ใช้หน้า Success)
+   3. API INTERACTION 
    ============================================================ */
   async function generatePreviewAndGo() {
-      const config = collectConfig();
-      const loading = document.getElementById("loadingScreen");
-      if (loading) loading.style.display = "flex";
+    const config = collectConfig();
+    const loading = document.getElementById("loadingScreen");
+    if (loading) loading.style.display = "flex";
 
-      console.log("SEND TO API:", config);
+    try {
+        // const res = await fetch("http://127.0.0.1:8000/generate", {
+        const res = await fetch("http://localhost:8000/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(config)
+        });
 
-      try {
-          const res = await fetch("http://127.0.0.1:8000/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(config)
-      });
-
-        if (!res.ok) {
-            const errorText = await res.text();
-            alert("Server error: " + errorText);
-            return;
-        }
+        if (!res.ok) throw new Error("หลังบ้านพ่น Error ออกมา");
 
         const data = await res.json();
+        console.log("ได้ข้อมูลใหม่จากหลังบ้านแล้ว!", data);
+
+        localStorage.removeItem("pdf_url");
+        localStorage.removeItem("latest_codes");
 
         if (data.pdf_url) {
-            localStorage.setItem("pdf_url", data.pdf_url); 
+            localStorage.setItem("pdf_url", data.pdf_url);
             if (data.codes) {
                 localStorage.setItem("latest_codes", JSON.stringify(data.codes));
             }
-            
-            saveToHistory(data.pdf_url, data.excel_url || "", config);
-            console.log("บันทึก URL สำเร็จ กำลังย้ายไปหน้า Preview...");
-            window.location.href = "preview.html"; 
-            
-        } else {
-            alert("ไม่ได้รับลิงก์ PDF จากระบบ กรุณาลองใหม่");
+
+            if (typeof saveToHistory === "function") {
+                saveToHistory(data.pdf_url, data.excel_url || "", config);
+            }
+
+            console.log("กำลังพาไปหน้า Preview...");
+            setTimeout(() => {
+                window.location.href = "preview.html";
+            }, 300); 
         }
 
     } catch (err) {
         console.error("🔥 FETCH ERROR:", err);
-        alert("การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+        alert("การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว!");
     } finally {
         if (loading) loading.style.display = "none";
     }
