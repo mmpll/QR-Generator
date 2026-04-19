@@ -6,6 +6,7 @@ from fpdf import FPDF
 
 import random
 import qrcode
+import pandas as pd
 import os
 import time
 import traceback
@@ -20,10 +21,18 @@ app.add_middleware(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 QR_DIR = os.path.join(BASE_DIR, "qrcodes")
+PREVIEW_DIR = os.path.join(BASE_DIR, "preview")
+EXCEL_DIR = os.path.join(BASE_DIR, "excel")
+
 os.makedirs(QR_DIR, exist_ok=True)
+os.makedirs(PREVIEW_DIR, exist_ok=True)
+os.makedirs(EXCEL_DIR, exist_ok=True)
 
 app.mount("/qrcodes", StaticFiles(directory=QR_DIR), name="qrcodes")
+app.mount("/preview", StaticFiles(directory=PREVIEW_DIR), name="preview")
+app.mount("/excel", StaticFiles(directory=EXCEL_DIR), name="excel")
 
 LAYOUT_CONFIG = {
     "STD": {"width": 30, "height": 25, "cols": 8, "rows": 5, "qr_w": 23},    # 40 ดวง 
@@ -163,7 +172,7 @@ def create_pdf_layout(codes, size_type, prefix="VER"):
             pdf.cell(PAGE_W - (MARGIN_X * 2), 8, stock_code, align="R")
 
         filename = f"preview_{int(time.time())}.pdf"
-        pdf.output(os.path.join(QR_DIR, filename))
+        pdf.output(os.path.join(PREVIEW_DIR, filename))
 
         return filename
 
@@ -202,21 +211,45 @@ def generate(config: dict):
         if pdf_filename:
             return {
                 "pdf_url": f"http://127.0.0.1:8000/preview/{pdf_filename}",
-            }
-        else:
-            return {"error": "Failed to generate PDF"}
+                "codes": codes_raw 
+        }
 
     except Exception as e:
         import traceback
         traceback.print_exc()  
         return {"error": str(e)}
+    
+@app.post("/export-excel")
+def export_excel(payload: dict):
+    try:
+        codes_list = payload.get("codes", [])
+        if not codes_list:
+            return {"error": "No codes provided"}
+
+        filename = f"stock_report_{int(time.time())}.xlsx"
+        file_path = os.path.join(EXCEL_DIR, filename)
+
+        df = pd.DataFrame(codes_list, columns=["Unique_Code"])
+        df.to_excel(file_path, index=False)
+
+        return {
+            "excel_url": f"http://127.0.0.1:8000/excel/{filename}",
+            "filename": filename
+        }
+    except Exception as e:
+        traceback.print_exc()
+        return {"error": str(e)}
 
 # =========================
-# PDF PREVIEW
+# PDF & EXCEL PREVIEW
 # =========================
 @app.get("/preview/{filename}")
 def preview_pdf(filename: str):
      return FileResponse(os.path.join(QR_DIR, filename), media_type="application/pdf")
+
+@app.get("/excel/{filename}")
+def preview_excel(filename: str):
+    return FileResponse(os.path.join(EXCEL_DIR, filename), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get("/")
 def root():
