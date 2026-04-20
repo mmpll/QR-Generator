@@ -10,7 +10,7 @@
 ====================================================== */
 .pdf-container {
     width: 100%;
-    max-width: 900px;
+    max-width: 1000px;
     margin: 12px auto;
     background: #fff;
     border-radius: 20px;
@@ -84,7 +84,7 @@
    VIEWER
 ====================================================== */
 .pdf-viewer {
-    height: 590px;
+    height: 650px;
     padding: 20px;
 
     display: flex;
