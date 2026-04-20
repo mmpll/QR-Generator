@@ -35,7 +35,7 @@ app.mount("/preview", StaticFiles(directory=PREVIEW_DIR), name="preview")
 app.mount("/excel", StaticFiles(directory=EXCEL_DIR), name="excel")
 
 LAYOUT_CONFIG = {
-    "STD": {"width": 30, "height": 25, "cols": 8, "rows": 5, "qr_w": 23},    # 40 ดวง 
+    "STD": {"width": 25, "height": 30, "cols": 8, "rows": 5, "qr_w": 23},    # 40 ดวง 
     "M":   {"width": 45, "height": 20, "cols": 5, "rows": 8, "qr_w": 15},   # 40 ดวง 
     "S":   {"width": 40, "height": 15, "cols": 6, "rows": 10, "qr_w": 12},   # 60 ดวง 
     "SS":  {"width": 30, "height": 10, "cols": 5, "rows": 20, "qr_w": 8.5}   # 100 ดวง 
@@ -77,6 +77,8 @@ def generate_qr(code):
 def create_pdf_layout(codes, size_type, prefix="VER"):
     try:
         pdf = FPDF(orientation="L", unit="mm", format="A4")
+        pdf.add_font('Mitr', '', 'Mitr-Regular.ttf', uni=True)
+        pdf.add_font('Mitr', 'B', 'Mitr-SemiBold.ttf', uni=True)
         pdf.set_auto_page_break(False)
 
         PAGE_W = 297
@@ -111,44 +113,35 @@ def create_pdf_layout(codes, size_type, prefix="VER"):
                 x = MARGIN_X + (col * cell_w)
                 y = MARGIN_TOP + (row * cell_h)
 
+                pdf.set_draw_color(200, 200, 200)
+                pdf.rect(x, y, cell_w, cell_h)
                 img_path = os.path.join(QR_DIR, f"{code_data['safe_name']}.png")
                 
                 if size_type == "SS":
-                    pdf.set_font("Arial", size=5)
+                    pdf.set_font("Mitr", size=6)
                 elif size_type == "S":
-                    pdf.set_font("Arial", size=6)
+                    pdf.set_font("Mitr", size=7)
                 else:
-                    pdf.set_font("Arial", size=7)
+                    pdf.set_font("Mitr", size=8)
             
-                padding = 2
-                text_h = 3  # ความสูง text
-
-                # 🔹 STD → text บน QR
+                # 🔹 STD → text บน (กึ่งกลาง), QR ล่าง
                 if size_type == "STD":
-
-                    # วาง text ด้านบน
-                    pdf.set_xy(x, y + 1)
-                    pdf.cell(cell_w, text_h, code_data["code"], align="C")
-
-                    # QR อยู่ใต้ text และต้องไม่ล้น
+                    pdf.set_xy(x, y + 1.5)
+                    pdf.cell(cell_w, 4, code_data["code"], align="C")
+                    
                     qr_x = x + (cell_w - qr_size) / 2
-                    qr_y = y + text_h + 2
-
-                # 🔹 M / S / SS → text ขวา QR
+                    qr_y = y + 6
+                
+                # 🔹 M / S / SS → QR ซ้าย, text ขวา (กึ่งกลาง)
                 else:
-
-                    qr_x = x + padding
+                    qr_x = x + 1 
                     qr_y = y + (cell_h - qr_size) / 2  
 
                     text_x = qr_x + qr_size + 1
-                    text_y = y + (cell_h / 2) - (text_h / 2)
+                    pdf.set_xy(text_x, y)
+                    pdf.cell(cell_w - qr_size - 2, cell_h, code_data["code"], align="L")
 
-                    max_w = cell_w - qr_size - (padding * 2)
-
-                    pdf.set_xy(text_x, text_y)
-                    pdf.cell(cell_w - qr_size - 4, text_h, code_data["code"], align="L")
-
-                # DRAW QR
+                # วาดรูป QR
                 if os.path.exists(img_path):
                     pdf.image(img_path, x=qr_x, y=qr_y, w=qr_size, h=qr_size)
 
@@ -164,11 +157,9 @@ def create_pdf_layout(codes, size_type, prefix="VER"):
 
             stock_code = f"{company}-0001-S-{size_type}-{str(p+1).zfill(2)}"
 
-            pdf.set_font("Helvetica", "B", 9)
-
-            pdf.set_y(PAGE_H - 12)  
-            pdf.set_x(MARGIN_X)
-
+            pdf.set_font("Arial", "B", 10)
+            footer_y = PAGE_H - 15 
+            pdf.set_xy(MARGIN_X, footer_y)
             pdf.cell(PAGE_W - (MARGIN_X * 2), 8, stock_code, align="R")
 
         filename = f"preview_{int(time.time())}.pdf"
