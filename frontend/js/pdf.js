@@ -1,6 +1,8 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 let pdfDoc = null;
 let scale = 1;
+let baseScale = 1;
+
 const viewer = document.getElementById("viewer");
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,29 +11,24 @@ document.addEventListener("DOMContentLoaded", () => {
     let storedUrl = localStorage.getItem("pdf_url");
 
     if (!storedUrl) {
-        console.error("ไม่พบ PDF URL");
+        console.error("ไม่พบ PDF URL ใน localStorage");
+        console.log("Current localStorage:", Object.keys(localStorage));
         return;
     }
 
     console.log("กำลังโหลด PDF จาก:", storedUrl); 
     
-    if (typeof loadPDF === "function") {
-        loadPDF(storedUrl);
-    } else {
-        console.error("ไม่พบฟังก์ชัน loadPDF!");
-    }
+    loadPDF(storedUrl);
 });
 
 function loadPDF(pdfUrl) {
     pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
         pdfDoc = pdf;
-
         document.getElementById("page-count").textContent = pdf.numPages;
 
         calculateBaseScale().then(() => {
-            renderPagesLazy();
+            renderPagesLazy(); // <-- ต้องเรียกชื่อนี้ให้ตรงกับด้านล่างครับ
         });
-
     }).catch(err => {
         console.error("โหลด PDF ไม่ได้:", err);
     });
@@ -40,8 +37,7 @@ function loadPDF(pdfUrl) {
 async function calculateBaseScale() {
     const page = await pdfDoc.getPage(1);
     const viewport = page.getViewport({ scale: 1 });
-
-    const containerWidth = viewer.clientWidth;
+    const containerWidth = viewer.clientWidth || 800; 
 
     baseScale = containerWidth / viewport.width;
     scale = baseScale;
