@@ -133,14 +133,13 @@ input {
    GRADIENT TEXT
 ========================================= */
 .gradient-text {
-  background: linear-gradient(
-    180deg,
-    #ff8a00,
-    #ff3d3d,
-    #c23cff,
-    #4fd1c5,
-    #7CFC00
-  );
+  background: linear-gradient(180deg,
+      #3B5BFF,
+      #2FA4FF,
+      #00C6FF,
+      #4FD1FF,
+      #7B2EFF,
+      #A66BFF);
   background-size: 100% 300%;
 
   -webkit-background-clip: text;
@@ -151,9 +150,17 @@ input {
 }
 
 @keyframes gradientFlow {
-  0% { background-position: 50% 0%; }
-  50% { background-position: 50% 100%; }
-  100% { background-position: 50% 0%; }
+  0% {
+    background-position: 50% 0%;
+  }
+
+  50% {
+    background-position: 50% 100%;
+  }
+
+  100% {
+    background-position: 50% 0%;
+  }
 }
 
 /* =========================================
@@ -204,7 +211,7 @@ input:focus {
 
 .primary-btn:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .primary-btn:active {
@@ -246,6 +253,7 @@ input:focus {
     transform: scale(0.5) translate(0, 0);
     opacity: 1;
   }
+
   to {
     transform: scale(1.5) translate(var(--x), var(--y));
     opacity: 0;
@@ -263,7 +271,7 @@ input:focus {
   align-items: center;
   justify-content: center;
 
-  background: rgba(255,255,255,0.9);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(6px);
 
   z-index: 9999;
@@ -275,7 +283,7 @@ input:focus {
   border-radius: 16px;
   text-align: center;
 
-  box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
 }
 
 .spinner {
@@ -291,7 +299,9 @@ input:focus {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .progress-bar {
@@ -339,4 +349,3 @@ input:focus {
     font-size: 24px;
   }
 }
-

@@ -78,7 +78,7 @@
 }
 
 .title-orange {
-  color: #ff8c00;
+  color: #0042ff;
 }
 
 /* ======================================================
@@ -276,7 +276,7 @@
 .size-label {
   font-weight: 700;
   font-size: 16px;
-} 
+}
 
 /* ======================================================
    QUANTITY
@@ -308,8 +308,8 @@
   background: var(--gray-200);
   color: var(--gray-600);
   font-weight: 700;
-
-  padding: 8px 12px;
+  font-size: 14px;
+  padding: 12px 20px;
   border-radius: var(--radius-pill);
   cursor: pointer;
 
@@ -326,7 +326,7 @@
 .logo-box {
   width: 100%;
   max-width: 220px;
-  height: 110px;
+  height: 200px;
 
   margin: 8px auto;
 
