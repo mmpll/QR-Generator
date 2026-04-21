@@ -5,35 +5,72 @@ let pdfDoc = null;
 let scale = 1;
 let baseScale = 1;
 
-const viewer = document.getElementById("viewer");
-
-document.addEventListener("DOMContentLoaded", () => {
-    if (viewer) viewer.innerHTML = "";
-
-    let storedUrl = localStorage.getItem("pdf_url");
-
-    if (!storedUrl) {
-        console.error("ไม่พบ PDF URL ใน localStorage");
-        console.log("Current localStorage:", Object.keys(localStorage));
+document.addEventListener("DOMContentLoaded", async () => {
+    const viewer = document.getElementById("viewer");
+    if (!viewer) {
+        console.error("ไม่พบ #viewer");
         return;
     }
 
-    console.log("กำลังโหลด PDF จาก:", storedUrl);
+    viewer.innerHTML = "";
 
-    loadPDF(storedUrl);
+    const storedUrl = localStorage.getItem("pdf_url");
+    console.log("pdf_url from localStorage:", storedUrl);
+
+    if (!storedUrl) {
+        viewer.innerHTML = `
+            <div style="padding:24px; text-align:center; color:#666;">
+                ไม่พบ PDF URL<br>
+                กรุณากลับไปสร้าง Preview ใหม่
+            </div>
+        `;
+        return;
+    }
+
+    try {
+        await checkPdfExists(storedUrl);
+        await loadPDF(storedUrl);
+    } catch (err) {
+        console.error("โหลด PDF ไม่สำเร็จ:", err);
+
+        viewer.innerHTML = `
+            <div style="padding:24px; text-align:center; color:#c00;">
+                โหลด PDF ไม่สำเร็จ<br>
+                ไม่พบไฟล์ PDF ตาม URL ที่บันทึกไว้
+                <br><br>
+                <button onclick="goHome()" style="padding:10px 16px; cursor:pointer;">
+                    กลับไปสร้างใหม่
+                </button>
+            </div>
+        `;
+    }
 });
 
-function loadPDF(pdfUrl) {
-    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
-        pdfDoc = pdf;
-        document.getElementById("page-count").textContent = pdf.numPages;
+async function checkPdfExists(pdfUrl) {
+    const res = await fetch(pdfUrl, { method: "HEAD" });
 
-        calculateBaseScale().then(() => {
-            renderPagesLazy(); // <-- ต้องเรียกชื่อนี้ให้ตรงกับด้านล่างครับ
-        });
-    }).catch(err => {
-        console.error("โหลด PDF ไม่ได้:", err);
-    });
+    if (!res.ok) {
+        throw new Error(`PDF not found: ${res.status}`);
+    }
+}
+
+async function loadPDF(pdfUrl) {
+    const viewer = document.getElementById("viewer");
+    if (!viewer) return;
+
+    console.log("กำลังโหลด PDF จาก:", pdfUrl);
+
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    pdfDoc = await loadingTask.promise;
+
+    const pageCountEl = document.getElementById("page-count");
+    if (pageCountEl) {
+        pageCountEl.textContent = pdfDoc.numPages;
+    }
+
+    await calculateBaseScale();
+    await renderAllPages();
+    attachScrollListener();
 }
 
 async function calculateBaseScale() {
@@ -42,8 +79,8 @@ async function calculateBaseScale() {
 
     const page = await pdfDoc.getPage(1);
     const viewport = page.getViewport({ scale: 1 });
-    const containerWidth = viewer.clientWidth || 800;
 
+    const containerWidth = viewer.clientWidth || 900;
     baseScale = Math.min(containerWidth / viewport.width, 1.2);
     scale = baseScale;
 
@@ -118,7 +155,7 @@ async function applyZoom() {
     await renderAllPages();
 }
 
-function updateCurrentPageOnScroll() {
+function attachScrollListener() {
     const viewer = document.getElementById("viewer");
     if (!viewer) return;
 

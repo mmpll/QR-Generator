@@ -6,7 +6,12 @@ window.state = {
     digit: 8
 };
 
-const API_BASE = "http://127.0.0.1:8000";
+// Use current origin when possible.
+// If frontend and backend are on same host/port, this works better than hardcoding.
+const API_BASE =
+    window.location.protocol === "file:"
+        ? "http://127.0.0.1:8000"
+        : `${window.location.protocol}//${window.location.hostname}:8000`;
 
 function goHome() {
     window.location.href = "config.html";
@@ -17,27 +22,31 @@ function goHistory() {
 }
 
 const LAYOUT_MAP = {
-    "STD": 40,
-    "M": 40,
-    "S": 60,
-    "SS": 100
+    STD: 40,
+    M: 40,
+    S: 60,
+    SS: 100
 };
 
 function saveToHistory(pdfUrl, excelUrl, config) {
-    let history = JSON.parse(localStorage.getItem("qr_history") || "[]");
+    try {
+        let history = JSON.parse(localStorage.getItem("qr_history") || "[]");
 
-    const newEntry = {
-        id: Date.now(),
-        date: new Date().toLocaleString("th-TH"),
-        pdf: pdfUrl,
-        excel: excelUrl,
-        size: config.size,
-        qty: config.quantity
-    };
+        const newEntry = {
+            id: Date.now(),
+            date: new Date().toLocaleString("th-TH"),
+            pdf: pdfUrl || "",
+            excel: excelUrl || "",
+            size: config.size,
+            qty: config.quantity
+        };
 
-    history.unshift(newEntry);
-    localStorage.setItem("qr_history", JSON.stringify(history));
-    console.log("บันทึกประวัติเรียบร้อย:", newEntry);
+        history.unshift(newEntry);
+        localStorage.setItem("qr_history", JSON.stringify(history));
+        console.log("บันทึกประวัติเรียบร้อย:", newEntry);
+    } catch (err) {
+        console.error("บันทึกประวัติไม่สำเร็จ:", err);
+    }
 }
 
 /* ============================================================
@@ -61,10 +70,12 @@ function collectConfig() {
         separatorText = "";
     }
 
+    const qtyRaw = parseInt(document.querySelector(".qty-input")?.value, 10);
+
     return {
         mode: modeName,
         size: sizeLabel,
-        quantity: parseInt(document.querySelector(".qty-input")?.value, 10) || 1,
+        quantity: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1,
         digit: window.state.digit,
         prefix: document.querySelector(".input-prefix")?.value?.trim() || "",
         separator: separatorText
@@ -76,7 +87,7 @@ function updateSummary() {
     const perPage = LAYOUT_MAP[config.size] || 40;
     const totalPages = Math.ceil(config.quantity / perPage) || 0;
 
-    const statValues = document.querySelectorAll(".stat-item span");
+    const statValues = document.querySelectorAll(".stat-item .fw-bold");
     if (statValues.length >= 4) {
         statValues[0].innerText = config.quantity.toLocaleString();
         statValues[1].innerText = config.size;
@@ -104,22 +115,69 @@ function showLoading(show = true) {
     }
 }
 
+function getLogoFile() {
+    const logoInput = document.getElementById("logoInput");
+    return logoInput?.files?.[0] || null;
+}
+
+function normalizePdfUrl(pdfUrl) {
+    if (!pdfUrl || typeof pdfUrl !== "string") return "";
+
+    // If backend already returns full URL, keep it.
+    if (pdfUrl.startsWith("http://") || pdfUrl.startsWith("https://")) {
+        return pdfUrl;
+    }
+
+    // If backend returns relative URL, convert to full URL.
+    if (pdfUrl.startsWith("/")) {
+        return `${API_BASE}${pdfUrl}`;
+    }
+
+    return `${API_BASE}/${pdfUrl}`;
+}
+
+async function parseJsonSafe(response) {
+    const text = await response.text();
+
+    try {
+        return text ? JSON.parse(text) : {};
+    } catch (err) {
+        console.error("JSON parse error:", err);
+        console.error("Raw response:", text);
+        throw new Error("รูปแบบข้อมูลจาก server ไม่ถูกต้อง");
+    }
+}
+
 /* ============================================================
    3. API INTERACTION
    ============================================================ */
 async function generatePreviewAndGo() {
+    if (window.state.isNavigating) return;
+    window.state.isNavigating = true;
+
     const config = collectConfig();
+    const logoFile = getLogoFile();
+
     showLoading(true);
 
     try {
-        // const res = await fetch("http://127.0.0.1:8000/generate", {
-        const res = await fetch("http://127.0.0.1:8000/generate", {
+        console.log("Sending config:", config);
+        console.log("Sending logo:", logoFile ? logoFile.name : "no logo");
+        console.log("API_BASE:", API_BASE);
+
+        const formData = new FormData();
+        formData.append("config", JSON.stringify(config));
+
+        if (logoFile) {
+            formData.append("logo", logoFile);
+        }
+
+        const res = await fetch(`${API_BASE}/generate`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(config)
+            body: formData
         });
 
-        const data = await res.json();
+        const data = await parseJsonSafe(res);
         console.log("Generate response:", data);
 
         if (!res.ok) {
@@ -134,25 +192,47 @@ async function generatePreviewAndGo() {
             throw new Error("Backend did not return pdf_url");
         }
 
+        const finalPdfUrl = normalizePdfUrl(data.pdf_url);
+
         localStorage.removeItem("pdf_url");
         localStorage.removeItem("latest_codes");
 
-        localStorage.setItem("pdf_url", data.pdf_url);
+        localStorage.setItem("pdf_url", finalPdfUrl);
 
-        if (data.codes && Array.isArray(data.codes)) {
+        if (Array.isArray(data.codes)) {
             localStorage.setItem("latest_codes", JSON.stringify(data.codes));
         }
 
-        saveToHistory(data.pdf_url, data.excel_url || "", config);
+        saveToHistory(finalPdfUrl, data.excel_url || "", config);
 
-        console.log("กำลังพาไปหน้า Preview...");
+        console.log("Saving latest pdf_url:", finalPdfUrl);
+        console.log("➡️ redirecting to preview.html");
+
         window.location.href = "preview.html";
     } catch (err) {
         console.error("🔥 FETCH ERROR:", err);
         alert(`สร้าง Preview ไม่สำเร็จ: ${err.message}`);
     } finally {
         showLoading(false);
+        window.state.isNavigating = false;
     }
+}
+
+async function exportExcelFromCodes(codes) {
+    const res = await fetch(`${API_BASE}/export-excel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codes })
+    });
+
+    const data = await parseJsonSafe(res);
+    console.log("Excel response:", data);
+
+    if (!res.ok || data.error) {
+        throw new Error(data.error || "สร้าง Excel ไม่สำเร็จ");
+    }
+
+    return data;
 }
 
 /* ============================================================
@@ -172,44 +252,27 @@ document.addEventListener("DOMContentLoaded", () => {
         logoBox: document.getElementById("logoBox")
     };
 
-    /* ---------- default active states ---------- */
-    if (el.btnAuto && !document.querySelector(".btn-mode.active")) {
-        el.btnAuto.classList.add("active");
-    }
 
-    const firstSizeBtn = document.querySelector(".btn-size");
-    if (firstSizeBtn && !document.querySelector(".btn-size.active")) {
-        firstSizeBtn.classList.add("active");
-    }
-
-    const firstSepBtn = document.querySelector(".sep-btn");
-    if (firstSepBtn && !document.querySelector(".sep-btn.active")) {
-        firstSepBtn.classList.add("active");
-    }
-
-    if (el.digitValue) {
-        el.digitValue.innerText = window.state.digit;
-    }
 
     /* ---------- mode toggle ---------- */
     el.btnAuto?.addEventListener("click", () => {
-        document.querySelectorAll(".btn-mode").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".btn-mode").forEach((b) => b.classList.remove("active"));
         el.btnAuto.classList.add("active");
         el.customSection?.classList.add("hidden");
         updateSummary();
     });
 
     el.btnCustom?.addEventListener("click", () => {
-        document.querySelectorAll(".btn-mode").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".btn-mode").forEach((b) => b.classList.remove("active"));
         el.btnCustom.classList.add("active");
         el.customSection?.classList.remove("hidden");
         updateSummary();
     });
 
     /* ---------- size selection ---------- */
-    document.querySelectorAll(".btn-size").forEach(btn => {
+    document.querySelectorAll(".btn-size").forEach((btn) => {
         btn.addEventListener("click", () => {
-            document.querySelectorAll(".btn-size").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".btn-size").forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
             updateSummary();
         });
@@ -222,36 +285,38 @@ document.addEventListener("DOMContentLoaded", () => {
         updateSummary();
     });
 
-    document.querySelectorAll(".btn-qty").forEach(btn => {
+    document.querySelectorAll(".btn-qty").forEach((btn) => {
         btn.addEventListener("click", () => {
             const add = parseInt(btn.innerText.replace("+", ""), 10) || 0;
             const current = parseInt(el.qtyInput?.value || "0", 10) || 0;
+
             if (el.qtyInput) {
-                el.qtyInput.value = current + add;
+                el.qtyInput.value = String(current + add);
             }
+
             updateSummary();
         });
     });
 
     /* ---------- digit control ---------- */
     el.plusBtn?.addEventListener("click", () => {
-        window.state.digit++;
+        window.state.digit += 1;
         if (el.digitValue) el.digitValue.innerText = window.state.digit;
         updateSummary();
     });
 
     el.minusBtn?.addEventListener("click", () => {
         if (window.state.digit > 1) {
-            window.state.digit--;
+            window.state.digit -= 1;
             if (el.digitValue) el.digitValue.innerText = window.state.digit;
             updateSummary();
         }
     });
 
     /* ---------- separator ---------- */
-    document.querySelectorAll(".sep-btn").forEach(btn => {
+    document.querySelectorAll(".sep-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
-            document.querySelectorAll(".sep-btn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".sep-btn").forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
             updateSummary();
         });
@@ -261,15 +326,19 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector(".input-prefix")?.addEventListener("input", updateSummary);
 
     /* ---------- CTA buttons ---------- */
-    document.querySelectorAll(".fireBtn").forEach(btn => {
+    document.querySelectorAll(".fireBtn").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             e.preventDefault();
 
-            const target = btn.dataset.link;
+            if (window.state.isNavigating) return;
+
+            const target = btn.dataset.link?.trim();
+
+            if (!target) return;
 
             if (target === "preview.html") {
                 await generatePreviewAndGo();
-            } else if (target) {
+            } else {
                 window.location.href = target;
             }
         });
@@ -278,7 +347,12 @@ document.addEventListener("DOMContentLoaded", () => {
     /* ---------- logo preview ---------- */
     el.logoInput?.addEventListener("change", (e) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+
+        if (!file) {
+            if (el.logoPreview) el.logoPreview.src = "";
+            el.logoBox?.classList.remove("has-image");
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -302,7 +376,9 @@ function downloadPDF() {
     if (pdfUrl) {
         const link = document.createElement("a");
         link.href = pdfUrl;
-        link.download = pdfUrl.split("/").pop();
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.download = pdfUrl.split("/").pop() || "preview.pdf";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -320,21 +396,11 @@ async function downloadExcel() {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/export-excel`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ codes: JSON.parse(rawCodes) })
-        });
-
-        const data = await res.json();
-        console.log("Excel response:", data);
-
-        if (!res.ok || data.error) {
-            throw new Error(data.error || "สร้าง Excel ไม่สำเร็จ");
-        }
+        const codes = JSON.parse(rawCodes);
+        const data = await exportExcelFromCodes(codes);
 
         if (data.excel_url) {
-            window.location.href = data.excel_url;
+            window.location.href = normalizePdfUrl(data.excel_url);
         } else {
             alert("เจน Excel ไม่สำเร็จ");
         }
@@ -380,7 +446,7 @@ if (window.location.pathname.includes("history.html")) {
         if (historyList) {
             historyList.innerHTML = "";
 
-            history.forEach(item => {
+            history.forEach((item) => {
                 const row = document.createElement("div");
                 row.className = "history-item";
 
@@ -406,14 +472,21 @@ if (window.location.pathname.includes("history.html")) {
 
             const link = document.createElement("a");
             link.href = url;
-            link.download = url.split("/").pop();
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.download = url.split("/").pop() || "download";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         };
 
         document.body.addEventListener("click", (e) => {
-            if (e.target.classList.contains("btn-dl-pdf") || e.target.classList.contains("btn-dl-excel")) {
+            if (e.target.classList.contains("btn-dl-pdf")) {
+                const url = e.target.getAttribute("data-url");
+                triggerDownload(url);
+            }
+
+            if (e.target.classList.contains("btn-dl-excel")) {
                 const url = e.target.getAttribute("data-url");
                 triggerDownload(url);
             }
