@@ -40,9 +40,8 @@ app.mount("/preview", StaticFiles(directory=PREVIEW_DIR), name="preview")
 app.mount("/excel", StaticFiles(directory=EXCEL_DIR), name="excel")
  
 # Lot QR size code
-# ถ้าอยากให้ STD ออกเป็น STD ให้เปลี่ยน "STD": "S" เป็น "STD": "STD"
 SIZE_CODE_MAP = {
-    "STD": "S",
+    "STD": "STD",
     "M": "M",
     "S": "S",
     "SS": "SS",
@@ -111,7 +110,7 @@ def get_mode_code(mode: str) -> str:
  
 def get_qr_size_code(size_type: str) -> str:
     size_type = str(size_type or "STD").strip().upper()
-    return SIZE_CODE_MAP.get(size_type, "S")
+    return SIZE_CODE_MAP.get(size_type, "STD")
  
  
 def generate_codes(config: dict):

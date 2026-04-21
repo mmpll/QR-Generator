@@ -75,7 +75,7 @@ function collectConfig() {
     return {
         mode: modeName,
         size: sizeLabel,
-        quantity: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1,
+        quantity: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 0,
         digit: window.state.digit,
         prefix: document.querySelector(".input-prefix")?.value?.trim() || "",
         separator: separatorText
@@ -84,7 +84,7 @@ function collectConfig() {
 
 function updateSummary() {
     const config = collectConfig();
-    const perPage = LAYOUT_MAP[config.size] || 40;
+    const perPage = LAYOUT_MAP[config.size] || 0;
     const totalPages = Math.ceil(config.quantity / perPage) || 0;
 
     const statValues = document.querySelectorAll(".stat-item .fw-bold");
@@ -426,70 +426,72 @@ if (window.location.pathname.includes("success.html")) {
 }
 
 /* ============================================================
-   6. HISTORY PAGE LOGIC
+   6. HISTORY PAGE LOGIC (NEW VERSION 🔥)
    ============================================================ */
 if (window.location.pathname.includes("history.html")) {
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", loadHistory);
+    async function loadHistory() {
         const historyList = document.getElementById("historyList");
         const emptyState = document.getElementById("emptyState");
 
-        let history = JSON.parse(localStorage.getItem("qr_history") || "[]");
+        try {
+            const res = await fetch(`${API_BASE}/history`);
+            const data = await res.json();
 
-        if (history.length === 0) {
-            if (emptyState) emptyState.style.display = "block";
-            if (historyList) historyList.innerHTML = "";
-            return;
-        }
-
-        if (emptyState) emptyState.style.display = "none";
-
-        if (historyList) {
             historyList.innerHTML = "";
 
-            history.forEach((item) => {
-                const row = document.createElement("div");
-                row.className = "history-item";
-
-                row.innerHTML = `
-                    <div class="his-info" style="display:flex; flex-direction:column;">
-                        <strong>วันที่สร้าง: ${item.date}</strong>
-                        <small>ขนาด ${item.size} | จำนวน ${item.qty} ดวง</small>
-                    </div>
-                    <div class="his-actions">
-                        <img src="../assets/img/pdf.png" class="btn-dl-pdf" data-url="${item.pdf || ""}" style="width:30px; cursor:pointer; margin-right:10px;">
-                        <img src="../assets/img/xls.png" class="btn-dl-excel" data-url="${item.excel || ""}" style="width:30px; cursor:pointer;">
-                    </div>
-                `;
-                historyList.appendChild(row);
-            });
-        }
-
-        const triggerDownload = (url) => {
-            if (!url) {
-                alert("ไม่พบไฟล์");
+            if (!data.files || data.files.length === 0) {
+                emptyState.style.display = "block";
                 return;
             }
 
-            const link = document.createElement("a");
-            link.href = url;
-            link.target = "_blank";
-            link.rel = "noopener";
-            link.download = url.split("/").pop() || "download";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
+            emptyState.style.display = "none";
 
-        document.body.addEventListener("click", (e) => {
-            if (e.target.classList.contains("btn-dl-pdf")) {
-                const url = e.target.getAttribute("data-url");
-                triggerDownload(url);
-            }
+            data.files.forEach(file => {
 
-            if (e.target.classList.contains("btn-dl-excel")) {
-                const url = e.target.getAttribute("data-url");
-                triggerDownload(url);
-            }
+                const row = document.createElement("div");
+                row.className = "history-item";
+
+                const parts = file.filename.replace(".pdf", "").split("-");
+                const company = parts[0];
+                const lot = parts[1];
+                const mode = parts[2];
+                const size = parts[3];
+
+                row.innerHTML = `
+                    <div class="his-info">
+                        <strong>${file.filename}</strong>
+                        <small>Lot: ${lot} | Size: ${size} | Mode: ${mode}</small>
+                    </div>
+
+                    <div class="his-actions">
+                        <button onclick="openPDF('${file.url}')">📄</button>
+                        <button onclick="deleteFile('${file.filename}')">🗑️</button>
+                    </div>
+                `;
+
+                historyList.appendChild(row);
+            });
+
+            document.querySelector(".card-header span").innerText =
+                `ทั้งหมด ${data.files.length} รายการ`;
+
+        } catch (err) {
+            console.error("โหลด history ไม่ได้:", err);
+        }
+    }
+
+    function openPDF(url) {
+        window.open(url, "_blank");
+    }
+
+    async function deleteFile(filename) {
+        if (!confirm(`ลบ ${filename} ?`)) return;
+
+        await fetch(`${API_BASE}/history/${filename}`, {
+            method: "DELETE"
         });
-    });
+
+        loadHistory(); // refresh
+    }
 }
