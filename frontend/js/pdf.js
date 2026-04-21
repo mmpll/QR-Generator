@@ -1,4 +1,6 @@
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
 let pdfDoc = null;
 let scale = 1;
 let baseScale = 1;
@@ -16,8 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    console.log("กำลังโหลด PDF จาก:", storedUrl); 
-    
+    console.log("กำลังโหลด PDF จาก:", storedUrl);
+
     loadPDF(storedUrl);
 });
 
@@ -35,22 +37,35 @@ function loadPDF(pdfUrl) {
 }
 
 async function calculateBaseScale() {
+    const viewer = document.getElementById("viewer");
+    if (!viewer || !pdfDoc) return;
+
     const page = await pdfDoc.getPage(1);
     const viewport = page.getViewport({ scale: 1 });
-    const containerWidth = viewer.clientWidth || 800; 
+    const containerWidth = viewer.clientWidth || 800;
 
-    baseScale = containerWidth / viewport.width;
+    baseScale = Math.min(containerWidth / viewport.width, 1.2);
     scale = baseScale;
+
+    const zoomLevelEl = document.getElementById("zoom-level");
+    if (zoomLevelEl) {
+        zoomLevelEl.textContent = Math.round(scale * 100) + "%";
+    }
 }
 
-function renderPagesLazy() {
+async function renderAllPages() {
+    const viewer = document.getElementById("viewer");
     if (!viewer || !pdfDoc) return;
+
     viewer.innerHTML = "";
 
     for (let i = 1; i <= pdfDoc.numPages; i++) {
         const wrapper = document.createElement("div");
         wrapper.className = "page-wrapper";
         wrapper.dataset.page = i;
+        wrapper.style.display = "flex";
+        wrapper.style.justifyContent = "center";
+        wrapper.style.width = "100%";
 
         const canvas = document.createElement("canvas");
         canvas.className = "pdf-page";
@@ -58,45 +73,30 @@ function renderPagesLazy() {
         wrapper.appendChild(canvas);
         viewer.appendChild(wrapper);
 
-        observePage(wrapper, canvas, i);
+        await renderPage(i, canvas);
     }
 }
 
-function observePage(wrapper, canvas, pageNum) {
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting && !canvas.rendered) {
-                renderPage(pageNum, canvas);
-                canvas.rendered = true;
-            }
-        });
-    }, { threshold: 0.2 });
+async function renderPage(pageNum, canvas) {
+    if (!pdfDoc || !canvas) return;
 
-    observer.observe(wrapper);
-}
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
 
-function renderPage(num, canvas) {
-    pdfDoc.getPage(num).then(page => {
+    const context = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
 
-        const viewport = page.getViewport({ scale: scale });
+    canvas.width = viewport.width * dpr;
+    canvas.height = viewport.height * dpr;
+    canvas.style.width = viewport.width + "px";
+    canvas.style.height = viewport.height + "px";
 
-        const context = canvas.getContext("2d");
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const dpr = window.devicePixelRatio || 1;
-
-        canvas.width = viewport.width * dpr;
-        canvas.height = viewport.height * dpr;
-
-        canvas.style.width = viewport.width + "px";
-        canvas.style.height = viewport.height + "px";
-
-        context.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        page.render({
-            canvasContext: context,
-            viewport: viewport
-        });
-    });
+    await page.render({
+        canvasContext: context,
+        viewport: viewport
+    }).promise;
 }
 
 function zoomIn() {
@@ -109,40 +109,43 @@ function zoomOut() {
     applyZoom();
 }
 
-function applyZoom() {
+async function applyZoom() {
     const zoomLevelEl = document.getElementById("zoom-level");
-    if (zoomLevelEl) zoomLevelEl.textContent = Math.round(scale * 100) + "%";
+    if (zoomLevelEl) {
+        zoomLevelEl.textContent = Math.round(scale * 100) + "%";
+    }
 
-    document.querySelectorAll(".pdf-page").forEach((canvas, index) => {
-        canvas.rendered = false;
-        renderPage(index + 1, canvas);
-        canvas.rendered = true;
+    await renderAllPages();
+}
+
+function updateCurrentPageOnScroll() {
+    const viewer = document.getElementById("viewer");
+    if (!viewer) return;
+
+    viewer.addEventListener("scroll", () => {
+        const pages = document.querySelectorAll(".page-wrapper");
+        let closest = null;
+        let minOffset = Infinity;
+
+        pages.forEach((p) => {
+            const rect = p.getBoundingClientRect();
+            const offset = Math.abs(rect.top - 120);
+
+            if (offset < minOffset) {
+                minOffset = offset;
+                closest = p;
+            }
+        });
+
+        if (closest) {
+            const pageNumEl = document.getElementById("page-num");
+            if (pageNumEl) {
+                pageNumEl.textContent = closest.dataset.page;
+            }
+        }
     });
 }
 
-viewer.addEventListener("scroll", () => {
-    const pages = document.querySelectorAll(".page-wrapper");
-
-    let closest = null;
-    let minOffset = Infinity;
-
-    pages.forEach(p => {
-        const rect = p.getBoundingClientRect();
-        const offset = Math.abs(rect.top - 100);
-
-        if (offset < minOffset) {
-            minOffset = offset;
-            closest = p;
-        }
-    });
-
-    if (closest) {
-        document.getElementById("page-num").textContent = closest.dataset.page;
-    }
-});
-
-
-// Buttons
 document.querySelector(".back-btn")?.addEventListener("click", () => {
     window.location.href = "config.html";
 });
