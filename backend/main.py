@@ -67,8 +67,8 @@ LAYOUT_CONFIG = {
         "label_h": 20,
         "cols": 5,
         "qr_w": 15,
-        "gap_x": 3,           # 0.3 cm
-        "gap_y": 5,           # 0.5 cm
+        "gap_x": 5,           # 0.3 cm
+        "gap_y": 3,           # 0.5 cm
     },
     "S": {
         "orientation": "L",   # A4 landscape
@@ -360,7 +360,7 @@ def create_pdf_layout(codes, size_type, prefix="VER", mode="Auto Generate"):
  
             stock_code = f"{company_code}-{lot_no}-{mode_code}-{qr_size_code}-{p + 1}"
  
-            pdf.set_font("Arial", "B", 18)
+            pdf.set_font("Arial", "B", 16)
             footer_y = PAGE_H - 15
             pdf.set_xy(MARGIN_X, footer_y)
             pdf.cell(PAGE_W - (MARGIN_X * 2), 8, stock_code, align="R")
