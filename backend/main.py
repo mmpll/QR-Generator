@@ -389,89 +389,57 @@ async def generate(
 ):
     try:
         config_data = json.loads(config)
-        print("CONFIG:", config_data)
- 
+
         logo_path = None
         if logo:
             ext = os.path.splitext(logo.filename or "")[1].lower()
             if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
                 ext = ".png"
- 
+
             logo_filename = f"logo_{int(time.time() * 1000)}{ext}"
             logo_path = os.path.join(TEMP_DIR, logo_filename)
- 
+
             with open(logo_path, "wb") as f:
                 f.write(await logo.read())
- 
+
         codes_raw = generate_codes(config_data)
- 
+
         size_type = str(config_data.get("size", "STD")).strip().upper()
         prefix = str(config_data.get("prefix", "VER")).strip()
         mode = str(config_data.get("mode", "Auto Generate")).strip()
- 
+
         codes = []
- 
         for code in codes_raw:
             _, safe_name = generate_qr(code, logo_path)
             codes.append({"code": code, "safe_name": safe_name})
- 
+
+        # สร้าง PDF
         pdf_filename = create_pdf_layout(codes, size_type, prefix, mode)
-        print("PDF filename returned:", pdf_filename)
- 
-        if logo_path and os.path.exists(logo_path):
-            try:
-                os.remove(logo_path)
-            except Exception:
-                traceback.print_exc()
- 
+
         if not pdf_filename:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Failed to create preview PDF"},
-            )
- 
-        full_pdf_path = os.path.join(PREVIEW_DIR, pdf_filename)
-        print("Checking final PDF path:", full_pdf_path)
- 
-        if not os.path.exists(full_pdf_path):
-            return JSONResponse(
-                status_code=500,
-                content={"error": f"Preview PDF missing after generation: {pdf_filename}"},
-            )
- 
+            return JSONResponse(status_code=500, content={"error": "Failed to create PDF"})
+
+        # สร้าง Excel
+        excel_filename = pdf_filename.replace(".pdf", ".xlsx")
+        excel_path = os.path.join(EXCEL_DIR, excel_filename)
+
+        df = pd.DataFrame(codes_raw, columns=["Unique_Code"])
+        df.to_excel(excel_path, index=False)
+
+        # cleanup logo
+        if logo_path and os.path.exists(logo_path):
+            os.remove(logo_path)
+
         return {
             "pdf_url": f"http://127.0.0.1:8000/preview/{pdf_filename}",
+            "excel_url": f"http://127.0.0.1:8000/excel/{excel_filename}",
             "codes": codes_raw,
             "filename": pdf_filename,
         }
- 
+
     except Exception as e:
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
- 
- 
-@app.post("/export-excel")
-def export_excel(payload: dict):
-    try:
-        codes_list = payload.get("codes", [])
-        if not codes_list:
-            return JSONResponse(status_code=400, content={"error": "No codes provided"})
- 
-        filename = f"stock_report_{int(time.time() * 1000)}.xlsx"
-        file_path = os.path.join(EXCEL_DIR, filename)
- 
-        df = pd.DataFrame(codes_list, columns=["Unique_Code"])
-        df.to_excel(file_path, index=False)
- 
-        return {
-            "excel_url": f"http://127.0.0.1:8000/excel/{filename}",
-            "filename": filename,
-        }
- 
-    except Exception as e:
-        traceback.print_exc()
-        return JSONResponse(status_code=500, content={"error": str(e)})
- 
  
 @app.get("/preview/{filename}")
 def preview_pdf(filename: str):
@@ -490,6 +458,56 @@ def preview_excel(filename: str):
         file_path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+@app.get("/history")
+def get_history():
+    try:
+        files = []
+
+        for filename in os.listdir(PREVIEW_DIR):
+            if filename.endswith(".pdf"):
+
+                pdf_url = f"http://127.0.0.1:8000/preview/{filename}"
+                excel_name = filename.replace(".pdf", ".xlsx")
+                excel_path = os.path.join(EXCEL_DIR, excel_name)
+
+                excel_url = (
+                    f"http://127.0.0.1:8000/excel/{excel_name}"
+                    if os.path.exists(excel_path)
+                    else None
+                )
+
+                files.append({
+                    "filename": filename,
+                    "pdf_url": pdf_url,
+                    "excel_url": excel_url,
+                })
+
+        files.sort(reverse=True)
+
+        return {"files": files}
+
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+@app.delete("/history/{filename}")
+def delete_file(filename: str):
+    try:
+        pdf_path = os.path.join(PREVIEW_DIR, filename)
+        excel_path = os.path.join(EXCEL_DIR, filename.replace(".pdf", ".xlsx"))
+
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
+
+        if os.path.exists(excel_path):
+            os.remove(excel_path)
+
+        return {"message": "Deleted successfully"}
+
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
  
  
 @app.get("/")

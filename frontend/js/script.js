@@ -8,10 +8,7 @@ window.state = {
 
 // Use current origin when possible.
 // If frontend and backend are on same host/port, this works better than hardcoding.
-const API_BASE =
-    window.location.protocol === "file:"
-        ? "http://127.0.0.1:8000"
-        : `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_BASE = "http://127.0.0.1:8000";
 
 function goHome() {
     window.location.href = "config.html";
@@ -75,7 +72,7 @@ function collectConfig() {
     return {
         mode: modeName,
         size: sizeLabel,
-        quantity: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 0,
+        quantity: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw :  0,
         digit: window.state.digit,
         prefix: document.querySelector(".input-prefix")?.value?.trim() || "",
         separator: separatorText
@@ -161,9 +158,10 @@ async function generatePreviewAndGo() {
     showLoading(true);
 
     try {
+        console.log("CALL API:", `${API_BASE}/generate`);
         console.log("Sending config:", config);
         console.log("Sending logo:", logoFile ? logoFile.name : "no logo");
-        console.log("API_BASE:", API_BASE);
+        // console.log("API_BASE:", API_BASE);
 
         const formData = new FormData();
         formData.append("config", JSON.stringify(config));
@@ -196,8 +194,13 @@ async function generatePreviewAndGo() {
 
         localStorage.removeItem("pdf_url");
         localStorage.removeItem("latest_codes");
+        localStorage.removeItem("pdf_filename");
 
         localStorage.setItem("pdf_url", finalPdfUrl);
+
+        if (data.filename) {
+            localStorage.setItem("pdf_filename", data.filename);
+        }
 
         if (Array.isArray(data.codes)) {
             localStorage.setItem("latest_codes", JSON.stringify(data.codes));
@@ -209,6 +212,7 @@ async function generatePreviewAndGo() {
         console.log("➡️ redirecting to preview.html");
 
         window.location.href = "preview.html";
+        
     } catch (err) {
         console.error("🔥 FETCH ERROR:", err);
         alert(`สร้าง Preview ไม่สำเร็จ: ${err.message}`);
@@ -389,6 +393,7 @@ function downloadPDF() {
 
 async function downloadExcel() {
     const rawCodes = localStorage.getItem("latest_codes");
+    const pdfFilename = localStorage.getItem("pdf_filename");
 
     if (!rawCodes) {
         alert("หาข้อมูลรหัสไม่เจอ");
