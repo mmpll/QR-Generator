@@ -149,6 +149,11 @@
     transition: all 0.2s ease;
 }
 
+.action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 /* icon inside */
 .action-btn img {
     width: 18px;
