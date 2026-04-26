@@ -7,11 +7,12 @@
 
     <title>Configuration</title>
 
+    <link rel="icon" href="../assets/img/pdf.png" type="image/png" />
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../css/style_config.css" />
-    <script src="../js/script.js" defer></script>
+    <script src="../js/script.js?v=20260426-21" defer></script>
 </head>
 
 <body>
@@ -40,14 +41,14 @@
                 <div class="card-section">
                     <h2 class="section-title">โหมดการสร้าง</h2>
                     <div class="mode-grid">
-                        <button class="btn-mode active" id="btn-auto-gen">
+                        <button class="btn-mode" id="btn-auto-gen" type="button">
                             <div class="mode-header">
                                 <span class="mode-icon">🚀</span>
                                 <span class="mode-name">Auto Generate</span>
                             </div>
                             <span class="mode-desc">มีลิสต์ ID อยู่แล้ว ระบบจัดให้</span>
                         </button>
-                        <button class="btn-mode" id="btn-custom-format">
+                        <button class="btn-mode" id="btn-custom-format" type="button">
                             <div class="mode-header">
                                 <span class="mode-icon">🖍️</span>
                                 <span class="mode-name">Custom Format</span>
@@ -70,10 +71,10 @@
                             <div class="format-group">
                                 <label>Separator</label>
                                 <div class="separator-group">
-                                    <button class="sep-btn active">-</button>
-                                    <button class="sep-btn">/</button>
-                                    <button class="sep-btn">_</button>
-                                    <button class="sep-btn">None</button>
+                                    <button class="sep-btn" type="button">-</button>
+                                    <button class="sep-btn" type="button">/</button>
+                                    <button class="sep-btn" type="button">_</button>
+                                    <button class="sep-btn" type="button">None</button>
                                 </div>
                             </div>
 
@@ -82,9 +83,9 @@
                                 <label>Running Number</label>
                                 <div class="digit-control">
                                     <span>Digits:</span>
-                                    <button class="digit-btn minus">-</button>
+                                    <button class="digit-btn minus" type="button">-</button>
                                     <span id="digitValue">8</span>
-                                    <button class="digit-btn plus">+</button>
+                                    <button class="digit-btn plus" type="button">+</button>
                                 </div>
                             </div>
 
@@ -96,19 +97,19 @@
                 <div class="card-section">
                     <h3 class="section-title">ขนาดสติกเกอร์</h3>
                     <div class="size-wrap">
-                        <button class="btn-size active" data-size="STD">
+                        <button class="btn-size" data-size="STD" type="button">
                             <span class="size-label">STD</span> 3 x 2.5 cm
                             <small class="size-detail">(40 ดวง/หน้า)</small>
                         </button>
-                        <button class="btn-size" data-size="M">
+                        <button class="btn-size" data-size="M" type="button">
                             <span class="size-label">M</span> 2 x 4.5 cm
                             <small class="size-detail">(40 ดวง/หน้า)</small>
                         </button>
-                        <button class="btn-size" data-size="S">
+                        <button class="btn-size" data-size="S" type="button">
                             <span class="size-label">S</span> 1.5 x 4 cm
                             <small class="size-detail">(60 ดวง/หน้า)</small>
                         </button>
-                        <button class="btn-size" data-size="SS">
+                        <button class="btn-size" data-size="SS" type="button">
                             <span class="size-label">SS</span> 1 x 3 cm
                             <small class="size-detail">(100 ดวง/หน้า)</small>
                         </button>
@@ -119,9 +120,9 @@
                     <h3 class="section-title">จำนวนที่อยากได้</h3>
                     <div class="qty-wrap">
                         <input class="qty-input" type="text" placeholder="999" />
-                        <button class="btn-qty">+50</button>
-                        <button class="btn-qty">+100</button>
-                        <button class="btn-qty">+200</button>
+                        <button class="btn-qty" type="button">+50</button>
+                        <button class="btn-qty" type="button">+100</button>
+                        <button class="btn-qty" type="button">+200</button>
                     </div>
                 </div>
             </div>
@@ -138,7 +139,7 @@
                     <!-- Upload Button -->
                     <div class="upload-group">
                         <label class="upload-btn" id="uploadBtn">
-                            <input id="logoInput" type="file" accept="image/*" hidden />
+                            <input id="logoInput" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden />
                             <span id="uploadLabelText">⬆️ Upload Logo</span>
                         </label>
 
@@ -161,7 +162,7 @@
                         <div class="summary-stats">
                             <span class="stat-item">สร้าง <span class="fw-bold">0</span> ดวง</span>
                             <span class="dot-divider">•</span>
-                            <span class="stat-item">ขนาด <span class="fw-bold">-</span></span> <span
+                            <span class="stat-item">ขนาด <span class="fw-bold">0</span></span> <span
                                 class="dot-divider">•</span>
                             <span class="stat-item"><span class="fw-bold">0</span> ดวง/หน้า</span>
                             <span class="dot-divider">•</span>
@@ -169,14 +170,14 @@
                         </div>
 
                         <div class="summary-range">
-                            ช่วงรหัส: <span class="range-highlight">HOD-0001 → HOD-0864</span>
+                            ช่วงรหัส: <span class="range-highlight">0 -> 0</span>
                         </div>
                     </div>
 
 
                 </div>
 
-                <button class="primary-cta fireBtn" data-purpose="primary-cta" data-link="/page/preview.html">
+                <button class="primary-cta fireBtn" data-purpose="primary-cta" data-link="preview.html" disabled>
                     สร้างพรีวิวให้ดูหน่อย <span class="emoji-large">✨</span>
                 </button>
 
@@ -195,9 +196,6 @@
             <h2>กำลังจัดไฟล์ให้อยู่ 😎</h2>
             <p id="loadingText">เดี๋ยวแป๊บ...กำลังจัด QR ให้</p>
 
-            <div class="progress-bar">
-                <div class="progress" id="progressBar"></div>
-            </div>
         </div>
     </div>
 </body>

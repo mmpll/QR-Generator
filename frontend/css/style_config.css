@@ -77,10 +77,6 @@
   margin-bottom: 10px;
 }
 
-.title-orange {
-  color: #0042ff;
-}
-
 /* ======================================================
    MODE BUTTONS
 ====================================================== */
@@ -122,15 +118,13 @@
 
 /* hover + active */
 .btn-mode:hover,
-.btn-size:hover,
-.btn-format:hover {
+.btn-size:hover {
   background: var(--gray-100);
   border-color: var(--gray-400);
 }
 
 .btn-mode.active,
-.btn-size.active,
-.btn-format.active {
+.btn-size.active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
@@ -236,8 +230,7 @@
 /* ======================================================
    SIZE BUTTONS
 ====================================================== */
-.size-wrap,
-.format-paper {
+.size-wrap {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px;
@@ -441,6 +434,7 @@
 .sub-caption {
   width: 100%;
   text-align: center;
+  margin-top: 8px;
 }
 
 /* CTA */
@@ -449,7 +443,11 @@
   padding: 14px;
 
   border-radius: var(--radius-pill);
-  background: #000;
+  background-color: #000;
+  border: 1px solid #000;
+  appearance: none;
+  -webkit-appearance: none;
+
   color: #fff;
 
   font-weight: 600;
@@ -472,22 +470,16 @@
   transform: scale(0.98);
 }
 
-/* ======================================================
-   EFFECT
-====================================================== */
-.money {
-  position: fixed;
-  pointer-events: none;
-  font-size: 20px;
-
-  animation: fly 0.8s ease-out forwards;
-}
-
-@keyframes fly {
-  to {
-    transform: translate(var(--x), var(--y)) scale(1.2);
-    opacity: 0;
-  }
+.primary-cta:disabled,
+.primary-cta:disabled:hover,
+.primary-cta:disabled:active {
+  background: #f1f1f1;
+  color: #6b7280;
+  border: none;
+  box-shadow: none;
+  opacity: 1;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ======================================================
@@ -530,22 +522,4 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.progress-bar {
-  width: 100%;
-  max-width: 200px;
-  height: 6px;
-
-  margin-top: 12px;
-  background: #eee;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.progress {
-  height: 100%;
-  width: 0%;
-  background: #000;
-  transition: width 0.3s ease;
 }

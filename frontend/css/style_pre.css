@@ -98,6 +98,34 @@
     scroll-behavior: smooth;
 }
 
+.preview-loading-state {
+    min-height: 420px;
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    color: #111827;
+    text-align: center;
+}
+
+.preview-loading-state h2 {
+    margin: 4px 0 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.preview-loading-state p {
+    max-width: 440px;
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
 /* ======================================================
    PAGE
 ====================================================== */
@@ -220,6 +248,13 @@
 
 .cta-btn:active {
     transform: scale(0.96);
+}
+
+.cta-btn.is-disabled,
+.cta-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .back-btn {

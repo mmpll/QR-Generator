@@ -93,8 +93,7 @@ input {
   align-items: center;
 }
 
-.main-grid,
-.footer-wrapper {
+.main-grid {
   width: 100%;
 }
 
@@ -106,27 +105,10 @@ input {
   margin-bottom: 28px;
 }
 
-.main-title {
-  font-size: clamp(32px, 6vw, 72px);
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
 .title {
   font-size: clamp(24px, 4vw, 48px);
   font-weight: 700;
   text-align: center;
-}
-
-.sub-title {
-  font-size: clamp(24px, 4vw, 48px);
-  font-weight: 700;
-}
-
-.subtitle {
-  font-size: clamp(16px, 2.5vw, 28px);
-  color: #555;
-  margin-bottom: 24px;
 }
 
 /* =========================================
@@ -163,18 +145,6 @@ input {
   }
 }
 
-/* =========================================
-   INPUT GROUP
-========================================= */
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  width: 100%;
-  max-width: 420px;
-}
-
 input {
   padding: 14px;
   border-radius: 12px;
@@ -189,75 +159,6 @@ input {
 input:focus {
   border-color: #027DFF;
   box-shadow: 0 0 0 3px rgba(2, 125, 255, 0.15);
-}
-
-/* =========================================
-   BUTTON
-========================================= */
-.primary-btn {
-  width: 100%;
-
-  padding: 16px;
-  border-radius: 999px;
-
-  background: #000;
-  color: #fff;
-
-  font-size: 16px;
-  font-weight: 600;
-
-  transition: all 0.25s ease;
-}
-
-.primary-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-}
-
-.primary-btn:active {
-  transform: scale(0.98);
-}
-
-/* =========================================
-   VIDEO (RESPONSIVE FIX)
-========================================= */
-.video-inline {
-  width: 100%;
-  max-width: 900px;
-
-  aspect-ratio: 16 / 9;
-
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.video-inline video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* =========================================
-   FIREWORK
-========================================= */
-.firework {
-  position: fixed;
-  font-size: 24px;
-  pointer-events: none;
-
-  animation: explode 0.8s ease-out forwards;
-}
-
-@keyframes explode {
-  from {
-    transform: scale(0.5) translate(0, 0);
-    opacity: 1;
-  }
-
-  to {
-    transform: scale(1.5) translate(var(--x), var(--y));
-    opacity: 0;
-  }
 }
 
 /* =========================================
