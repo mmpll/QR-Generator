@@ -7,6 +7,7 @@ import random
 import re
 import shutil
 import uuid
+from datetime import datetime
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -18,11 +19,17 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fpdf import FPDF
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, ValidationError, field_validator
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.exc import IntegrityError
+
+DEFAULT_DATABASE_URL = "mysql+pymysql://root:root@127.0.0.1:8889/qr_generator"
+DATABASE_URL = os.getenv("QR_DATABASE_URL", DEFAULT_DATABASE_URL).strip()
 
 LOGGER = logging.getLogger("qr_generator")
 if not LOGGER.handlers:
@@ -33,6 +40,8 @@ if not LOGGER.handlers:
 
 RNG = random.SystemRandom()
 LOT_NUMBER_LOCK = Lock()
+DATABASE_READY = False
+engine: Engine | None = None
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
@@ -170,7 +179,170 @@ def ensure_directories() -> None:
 
 ensure_directories()
 
+
+def quote_mysql_identifier(identifier: str) -> str:
+    return f"`{identifier.replace('`', '``')}`"
+
+
+def make_database_engine(database_url: str) -> Engine | None:
+    if not database_url:
+        return None
+
+    try:
+        return create_engine(database_url, pool_pre_ping=True, future=True)
+    except Exception as exc:
+        LOGGER.warning("Database engine could not be created: %s", exc)
+        return None
+
+
+def create_database_if_needed(database_url: str) -> None:
+    try:
+        url = make_url(database_url)
+    except Exception as exc:
+        LOGGER.warning("Database URL is invalid: %s", exc)
+        return
+
+    if not url.drivername.startswith("mysql") or not url.database:
+        return
+
+    server_engine: Engine | None = None
+    try:
+        server_engine = create_engine(url.set(database=None), pool_pre_ping=True, future=True)
+        with server_engine.begin() as connection:
+            connection.execute(
+                text(
+                    "CREATE DATABASE IF NOT EXISTS "
+                    f"{quote_mysql_identifier(url.database)} "
+                    "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                )
+            )
+    except Exception as exc:
+        LOGGER.warning("Could not auto-create database %s: %s", url.database, exc)
+    finally:
+        if server_engine is not None:
+            server_engine.dispose()
+
+
+def history_table_schema_sql(dialect_name: str) -> str:
+    if dialect_name.startswith("mysql"):
+        return """
+            CREATE TABLE IF NOT EXISTS qr_history (
+                id INT NOT NULL AUTO_INCREMENT,
+                filename VARCHAR(255) NOT NULL,
+                export_filename VARCHAR(255) NULL,
+                pdf_data LONGBLOB NOT NULL,
+                export_data LONGBLOB NULL,
+                export_mime_type VARCHAR(100) NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_qr_history_filename (filename),
+                KEY idx_qr_history_export_filename (export_filename)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+
+    return """
+        CREATE TABLE IF NOT EXISTS qr_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL UNIQUE,
+            export_filename TEXT,
+            pdf_data BLOB NOT NULL,
+            export_data BLOB,
+            export_mime_type TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """
+
+
+def get_existing_history_columns(connection) -> set[str]:
+    if not engine:
+        return set()
+
+    if engine.dialect.name.startswith("mysql"):
+        rows = connection.execute(
+            text(
+                """
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'qr_history'
+                """
+            )
+        )
+        return {str(row[0]) for row in rows}
+
+    rows = connection.execute(text("PRAGMA table_info(qr_history)"))
+    return {str(row[1]) for row in rows}
+
+
+def prepare_history_table(connection) -> None:
+    required_columns = {
+        "id",
+        "filename",
+        "export_filename",
+        "pdf_data",
+        "export_data",
+        "export_mime_type",
+        "created_at",
+    }
+    existing_columns = get_existing_history_columns(connection)
+
+    if existing_columns and existing_columns != required_columns:
+        if engine and engine.dialect.name.startswith("mysql"):
+            legacy_name = f"qr_history_legacy_{datetime.now():%Y%m%d%H%M%S}"
+            connection.execute(
+                text(
+                    "RENAME TABLE qr_history TO "
+                    f"{quote_mysql_identifier(legacy_name)}"
+                )
+            )
+            LOGGER.warning("Archived old qr_history table as %s before creating blob storage table.", legacy_name)
+        else:
+            connection.execute(text("DROP TABLE qr_history"))
+
+    connection.execute(text(history_table_schema_sql(engine.dialect.name if engine else "mysql")))
+
+
+def init_database() -> bool:
+    global DATABASE_READY, engine
+
+    DATABASE_READY = False
+    if not DATABASE_URL:
+        LOGGER.info("Database disabled because QR_DATABASE_URL is empty.")
+        return False
+
+    create_database_if_needed(DATABASE_URL)
+
+    if engine is None:
+        engine = make_database_engine(DATABASE_URL)
+    if engine is None:
+        return False
+
+    try:
+        with engine.begin() as connection:
+            prepare_history_table(connection)
+        DATABASE_READY = True
+        LOGGER.info("Database is ready.")
+        return True
+    except Exception as exc:
+        LOGGER.warning("Database is unavailable: %s", exc)
+        DATABASE_READY = False
+        return False
+
+
+def ensure_database_ready() -> bool:
+    if DATABASE_READY:
+        return True
+    return init_database()
+
+
 app = FastAPI(title="QR Generator API", version="2.0.0")
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    init_database()
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -213,6 +385,168 @@ async def request_validation_handler(_: Request, exc: RequestValidationError) ->
 
 def build_file_url(request: Request, route_prefix: str, filename: str) -> str:
     return f"{str(request.base_url).rstrip('/')}{route_prefix}/{quote(filename)}"
+
+
+def history_record_timestamp(value: Any) -> float | None:
+    if isinstance(value, datetime):
+        return value.timestamp()
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return None
+    return None
+
+
+def get_database_engine() -> Engine:
+    if not ensure_database_ready() or engine is None:
+        raise ApiError(503, "Database is unavailable")
+    return engine
+
+
+def get_export_mime_type(filename: str) -> str:
+    return CSV_MIME_TYPE if Path(filename).suffix.lower() == ".csv" else XLSX_MIME_TYPE
+
+
+def content_disposition(disposition: str, filename: str) -> str:
+    return f"{disposition}; filename*=UTF-8''{quote(Path(filename).name)}"
+
+
+def insert_history_record(
+    filename: str,
+    pdf_data: bytes,
+    export_filename: str | None = None,
+    export_data: bytes | None = None,
+    export_mime_type: str | None = None,
+) -> None:
+    db_engine = get_database_engine()
+
+    try:
+        with db_engine.begin() as connection:
+            exists = connection.execute(
+                text("SELECT 1 FROM qr_history WHERE filename = :filename LIMIT 1"),
+                {"filename": filename},
+            ).first()
+            if exists:
+                raise ApiError(409, "A file with this name already exists. Please generate a new preview.")
+
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO qr_history (
+                        filename,
+                        export_filename,
+                        pdf_data,
+                        export_data,
+                        export_mime_type
+                    )
+                    VALUES (
+                        :filename,
+                        :export_filename,
+                        :pdf_data,
+                        :export_data,
+                        :export_mime_type
+                    )
+                    """
+                ),
+                {
+                    "filename": filename,
+                    "export_filename": export_filename,
+                    "pdf_data": pdf_data,
+                    "export_data": export_data,
+                    "export_mime_type": export_mime_type,
+                },
+            )
+    except ApiError:
+        raise
+    except IntegrityError as exc:
+        raise ApiError(409, "A file with this name already exists. Please generate a new preview.") from exc
+    except Exception as exc:
+        LOGGER.exception("Failed to insert history record into database")
+        raise ApiError(500, "Failed to save confirmed files to database") from exc
+
+
+def delete_history_record(filename: str) -> bool:
+    db_engine = get_database_engine()
+
+    try:
+        with db_engine.begin() as connection:
+            result = connection.execute(
+                text("DELETE FROM qr_history WHERE filename = :filename"),
+                {"filename": filename},
+            )
+            return bool(result.rowcount)
+    except Exception as exc:
+        LOGGER.exception("Failed to delete history record from database")
+        raise ApiError(500, "Failed to delete history record from database") from exc
+
+
+def load_history_records() -> list[dict[str, Any]]:
+    db_engine = get_database_engine()
+
+    try:
+        with db_engine.begin() as connection:
+            rows = connection.execute(
+                text(
+                    """
+                    SELECT filename, export_filename, created_at
+                    FROM qr_history
+                    ORDER BY created_at DESC, id DESC
+                    """
+                )
+            ).mappings()
+            return [dict(row) for row in rows]
+    except Exception as exc:
+        LOGGER.exception("Failed to load history records from database")
+        raise ApiError(500, "Failed to load history records from database") from exc
+
+
+def load_history_filenames() -> list[str]:
+    try:
+        db_engine = get_database_engine()
+        with db_engine.begin() as connection:
+            rows = connection.execute(text("SELECT filename FROM qr_history")).fetchall()
+            return [str(row[0]) for row in rows]
+    except ApiError:
+        return []
+    except Exception:
+        LOGGER.exception("Failed to load history filenames from database")
+        return []
+
+
+def load_pdf_data(filename: str) -> bytes:
+    db_engine = get_database_engine()
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            text("SELECT pdf_data FROM qr_history WHERE filename = :filename LIMIT 1"),
+            {"filename": filename},
+        ).first()
+
+    if not row or row[0] is None:
+        raise ApiError(404, "PDF file not found")
+    return bytes(row[0])
+
+
+def load_export_data(filename: str) -> tuple[bytes, str]:
+    db_engine = get_database_engine()
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT export_data, export_mime_type
+                FROM qr_history
+                WHERE export_filename = :filename
+                LIMIT 1
+                """
+            ),
+            {"filename": filename},
+        ).first()
+
+    if not row or row[0] is None:
+        raise ApiError(404, "Export file not found")
+    return bytes(row[0]), str(row[1] or get_export_mime_type(filename))
 
 
 def is_valid_draft_id(draft_id: str | None) -> bool:
@@ -329,6 +663,16 @@ def get_next_lot_no(company_code: str, mode_code: str, qr_size_code: str) -> str
     for pdf_path in PREVIEW_DIR.glob("*.pdf"):
         lot_number = extract_lot_number_from_filename(
             pdf_path.name,
+            company_code,
+            mode_code,
+            qr_size_code,
+        )
+        if lot_number is not None:
+            max_lot = max(max_lot, lot_number)
+
+    for filename in load_history_filenames():
+        lot_number = extract_lot_number_from_filename(
+            filename,
             company_code,
             mode_code,
             qr_size_code,
@@ -795,28 +1139,35 @@ def confirm_draft(draft_id: str, request: Request) -> JSONResponse:
         if not draft_pdf_path.exists():
             raise ApiError(404, "Draft PDF not found")
 
-        final_pdf_path = safe_child_path(PREVIEW_DIR, pdf_filename, {".pdf"})
-        if final_pdf_path.exists():
-            raise ApiError(409, "A file with this name already exists. Please generate a new preview.")
+        pdf_data = draft_pdf_path.read_bytes()
 
-        shutil.move(str(draft_pdf_path), str(final_pdf_path))
-
+        export_data = None
+        export_mime_type = None
         export_url = None
         if export_filename:
             draft_export_path = safe_child_path(draft_dir, export_filename, {".xlsx", ".csv"})
             if draft_export_path.exists():
-                final_export_path = safe_child_path(EXCEL_DIR, export_filename, {".xlsx", ".csv"})
-                if final_export_path.exists():
-                    final_export_path.unlink()
-                shutil.move(str(draft_export_path), str(final_export_path))
-                export_url = build_file_url(request, "/excel", final_export_path.name)
+                export_data = draft_export_path.read_bytes()
+                export_mime_type = get_export_mime_type(export_filename)
+                export_url = build_file_url(request, "/db/export", export_filename)
+            else:
+                export_filename = None
 
+        insert_history_record(
+            filename=pdf_filename,
+            pdf_data=pdf_data,
+            export_filename=export_filename,
+            export_data=export_data,
+            export_mime_type=export_mime_type,
+        )
+
+        pdf_url = build_file_url(request, "/db/pdf", pdf_filename)
         shutil.rmtree(draft_dir, ignore_errors=True)
         return api_success(
             {
-                "pdf_url": build_file_url(request, "/preview", final_pdf_path.name),
+                "pdf_url": pdf_url,
                 "excel_url": export_url,
-                "filename": final_pdf_path.name,
+                "filename": pdf_filename,
                 "warning": metadata.get("warning"),
             }
         )
@@ -837,6 +1188,107 @@ def delete_draft(draft_id: str) -> JSONResponse:
     except Exception:
         LOGGER.exception("Failed to delete draft %s", draft_id)
         return api_error(500, "Failed to delete draft")
+
+
+@app.get("/history")
+def get_history(request: Request) -> JSONResponse:
+    try:
+        files = [
+            {
+                "filename": Path(str(record.get("filename") or "")).name,
+                "pdf_url": build_file_url(
+                    request,
+                    "/db/pdf",
+                    Path(str(record.get("filename") or "")).name,
+                ),
+                "excel_url": (
+                    build_file_url(
+                        request,
+                        "/db/export",
+                        Path(str(record.get("export_filename") or "")).name,
+                    )
+                    if record.get("export_filename")
+                    else None
+                ),
+                "created_at": history_record_timestamp(record.get("created_at")),
+            }
+            for record in load_history_records()
+            if record.get("filename")
+        ]
+
+        return api_success(
+            {
+                "files": [
+                    file
+                    for file in files
+                    if file["filename"]
+                ]
+            }
+        )
+    except ApiError as exc:
+        return api_error(exc.status_code, exc.message, details=exc.details)
+    except Exception:
+        LOGGER.exception("Failed to load history")
+        return api_error(500, "Failed to load history")
+
+
+@app.delete("/history/{filename}")
+def delete_history_file(filename: str) -> JSONResponse:
+    try:
+        safe_filename = Path(filename or "").name
+        if not safe_filename.lower().endswith(".pdf"):
+            raise ApiError(400, "Invalid file type")
+
+        deleted = delete_history_record(safe_filename)
+        if not deleted:
+            raise ApiError(404, "History file not found")
+
+        return api_success({"message": "Deleted successfully"})
+    except ApiError as exc:
+        return api_error(exc.status_code, exc.message, details=exc.details)
+    except Exception:
+        LOGGER.exception("Failed to delete history file")
+        return api_error(500, "Failed to delete history file")
+
+
+@app.get("/db/pdf/{filename}", response_model=None)
+def db_pdf(filename: str):
+    try:
+        safe_filename = Path(filename or "").name
+        if not safe_filename.lower().endswith(".pdf"):
+            raise ApiError(400, "Invalid file type")
+
+        pdf_data = load_pdf_data(safe_filename)
+        return Response(
+            content=pdf_data,
+            media_type=PDF_MIME_TYPE,
+            headers={"Content-Disposition": content_disposition("inline", safe_filename)},
+        )
+    except ApiError as exc:
+        return api_error(exc.status_code, exc.message, details=exc.details)
+    except Exception:
+        LOGGER.exception("Failed to serve database PDF %s", filename)
+        return api_error(500, "Failed to serve PDF")
+
+
+@app.get("/db/export/{filename}", response_model=None)
+def db_export(filename: str):
+    try:
+        safe_filename = Path(filename or "").name
+        if Path(safe_filename).suffix.lower() not in {".xlsx", ".csv"}:
+            raise ApiError(400, "Invalid file type")
+
+        export_data, export_mime_type = load_export_data(safe_filename)
+        return Response(
+            content=export_data,
+            media_type=export_mime_type,
+            headers={"Content-Disposition": content_disposition("attachment", safe_filename)},
+        )
+    except ApiError as exc:
+        return api_error(exc.status_code, exc.message, details=exc.details)
+    except Exception:
+        LOGGER.exception("Failed to serve database export %s", filename)
+        return api_error(500, "Failed to serve export")
 
 
 @app.api_route("/preview/{filename}", methods=["GET", "HEAD"], response_model=None)
@@ -866,51 +1318,6 @@ def preview_excel(filename: str):
     except Exception:
         LOGGER.exception("Failed to serve export %s", filename)
         return api_error(500, "Failed to serve export")
-
-
-@app.get("/history")
-def get_history(request: Request) -> JSONResponse:
-    try:
-        files: list[dict[str, Any]] = []
-
-        for pdf_path in sorted(PREVIEW_DIR.glob("*.pdf"), key=lambda item: item.stat().st_mtime, reverse=True):
-            excel_candidate = EXCEL_DIR / f"{pdf_path.stem}.xlsx"
-            csv_candidate = EXCEL_DIR / f"{pdf_path.stem}.csv"
-            export_path = excel_candidate if excel_candidate.exists() else csv_candidate if csv_candidate.exists() else None
-
-            files.append(
-                {
-                    "filename": pdf_path.name,
-                    "pdf_url": build_file_url(request, "/preview", pdf_path.name),
-                    "excel_url": build_file_url(request, "/excel", export_path.name) if export_path else None,
-                    "created_at": pdf_path.stat().st_mtime,
-                }
-            )
-
-        return api_success({"files": files})
-    except Exception:
-        LOGGER.exception("Failed to load history")
-        return api_error(500, "Failed to load history")
-
-
-@app.delete("/history/{filename}")
-def delete_history_file(filename: str) -> JSONResponse:
-    try:
-        pdf_path = safe_child_path(PREVIEW_DIR, filename, {".pdf"})
-        if pdf_path.exists():
-            pdf_path.unlink()
-
-        for extension in (".xlsx", ".csv"):
-            export_path = safe_child_path(EXCEL_DIR, f"{pdf_path.stem}{extension}", {extension})
-            if export_path.exists():
-                export_path.unlink()
-
-        return api_success({"message": "Deleted successfully"})
-    except ApiError as exc:
-        return api_error(exc.status_code, exc.message, details=exc.details)
-    except Exception:
-        LOGGER.exception("Failed to delete history file")
-        return api_error(500, "Failed to delete history file")
 
 
 @app.get("/")

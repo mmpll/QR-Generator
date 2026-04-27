@@ -15,6 +15,7 @@ QR Generator is a FastAPI + HTML/CSS/JavaScript web app for creating QR code bat
 
 - Python 3.10 or newer
 - `pip`
+- MySQL if you want database-backed history
 - A virtual environment is strongly recommended
 
 ## Install dependencies
@@ -23,6 +24,25 @@ From the project root:
 
 ```bash
 pip install -r requirements.txt
+```
+
+## Database setup
+
+The app uses MySQL for saved history when it is available.
+
+Default local connection:
+
+```text
+mysql+pymysql://root:root@127.0.0.1:8889/qr_generator
+```
+
+This matches MAMP's common MySQL settings. Start MySQL first, then run the backend. The app will create the `qr_generator` database and `qr_history` table automatically.
+
+To use another MySQL install:
+
+```bash
+export QR_DATABASE_URL="mysql+pymysql://USER:PASSWORD@127.0.0.1:3306/qr_generator"
+python -m uvicorn backend.main:app --reload
 ```
 
 ## macOS setup
@@ -103,6 +123,9 @@ http://127.0.0.1:8000/page/config.html
 - Static frontend files are served directly by FastAPI.
 - CORS is enabled for local development so the frontend can work from either the FastAPI server or a local file/static server.
 - For the most reliable local flow, open the UI from FastAPI at `http://127.0.0.1:8000/page/config.html`.
+- The default database URL is `mysql+pymysql://root:root@127.0.0.1:8889/qr_generator`, which matches a common MAMP MySQL setup.
+- You can override the database with `QR_DATABASE_URL`, for example `export QR_DATABASE_URL="mysql+pymysql://root:password@127.0.0.1:3306/qr_generator"`.
+- When MySQL is reachable, the backend auto-creates the `qr_generator` database and `qr_history` table. If MySQL is off, the app still falls back to file-based history.
 - Generated previews, exports, temporary uploads, Python caches, virtual environments, and local logs are ignored by Git.
 
 ## How to test QR preview and logo upload
