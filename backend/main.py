@@ -69,11 +69,14 @@ SIZE_CODE_MAP = {
     "SS": "SS",
 }
 
+LABEL_BORDER_RADIUS = 2
+
 LAYOUT_CONFIG = {
     "STD": {
         "orientation": "L",
         "label_w": 25,
         "label_h": 30,
+        "label_radius": LABEL_BORDER_RADIUS,
         "cols": 8,
         "qr_w": 23,
         "gap_x": 5,
@@ -83,6 +86,7 @@ LAYOUT_CONFIG = {
         "orientation": "L",
         "label_w": 45,
         "label_h": 20,
+        "label_radius": LABEL_BORDER_RADIUS,
         "cols": 5,
         "qr_w": 15,
         "gap_x": 5,
@@ -92,6 +96,7 @@ LAYOUT_CONFIG = {
         "orientation": "L",
         "label_w": 40,
         "label_h": 15,
+        "label_radius": LABEL_BORDER_RADIUS,
         "cols": 6,
         "qr_w": 12,
         "gap_x": 5,
@@ -101,6 +106,7 @@ LAYOUT_CONFIG = {
         "orientation": "P",
         "label_w": 30,
         "label_h": 10,
+        "label_radius": LABEL_BORDER_RADIUS,
         "cols": 5,
         "qr_w": 8.5,
         "gap_x": 5,
@@ -116,7 +122,9 @@ except ImportError:
 
 
 class ApiError(Exception):
-    def __init__(self, status_code: int, message: str, *, details: Any | None = None) -> None:
+    def __init__(
+        self, status_code: int, message: str, *, details: Any | None = None
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.message = message
@@ -207,7 +215,9 @@ def create_database_if_needed(database_url: str) -> None:
 
     server_engine: Engine | None = None
     try:
-        server_engine = create_engine(url.set(database=None), pool_pre_ping=True, future=True)
+        server_engine = create_engine(
+            url.set(database=None), pool_pre_ping=True, future=True
+        )
         with server_engine.begin() as connection:
             connection.execute(
                 text(
@@ -295,11 +305,16 @@ def prepare_history_table(connection) -> None:
                     f"{quote_mysql_identifier(legacy_name)}"
                 )
             )
-            LOGGER.warning("Archived old qr_history table as %s before creating blob storage table.", legacy_name)
+            LOGGER.warning(
+                "Archived old qr_history table as %s before creating blob storage table.",
+                legacy_name,
+            )
         else:
             connection.execute(text("DROP TABLE qr_history"))
 
-    connection.execute(text(history_table_schema_sql(engine.dialect.name if engine else "mysql")))
+    connection.execute(
+        text(history_table_schema_sql(engine.dialect.name if engine else "mysql"))
+    )
 
 
 def init_database() -> bool:
@@ -353,20 +368,26 @@ app.add_middleware(
 
 app.mount("/preview", StaticFiles(directory=str(PREVIEW_DIR)), name="preview")
 app.mount("/excel", StaticFiles(directory=str(EXCEL_DIR)), name="excel")
-app.mount("/page", StaticFiles(directory=str(FRONTEND_DIR / "page"), html=True), name="page")
+app.mount(
+    "/page", StaticFiles(directory=str(FRONTEND_DIR / "page"), html=True), name="page"
+)
 app.mount("/css", StaticFiles(directory=str(FRONTEND_DIR / "css")), name="css")
 app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
 app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
 
 
-def api_success(data: dict[str, Any] | None = None, status_code: int = 200) -> JSONResponse:
+def api_success(
+    data: dict[str, Any] | None = None, status_code: int = 200
+) -> JSONResponse:
     payload = {"success": True}
     if data:
         payload.update(data)
     return JSONResponse(status_code=status_code, content=jsonable_encoder(payload))
 
 
-def api_error(status_code: int, message: str, *, details: Any | None = None) -> JSONResponse:
+def api_error(
+    status_code: int, message: str, *, details: Any | None = None
+) -> JSONResponse:
     payload: dict[str, Any] = {"success": False, "error": message}
     if details is not None:
         payload["details"] = details
@@ -379,7 +400,9 @@ async def api_error_handler(_: Request, exc: ApiError) -> JSONResponse:
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+async def request_validation_handler(
+    _: Request, exc: RequestValidationError
+) -> JSONResponse:
     return api_error(422, "Invalid request", details=exc.errors())
 
 
@@ -430,7 +453,10 @@ def insert_history_record(
                 {"filename": filename},
             ).first()
             if exists:
-                raise ApiError(409, "A file with this name already exists. Please generate a new preview.")
+                raise ApiError(
+                    409,
+                    "A file with this name already exists. Please generate a new preview.",
+                )
 
             connection.execute(
                 text(
@@ -462,7 +488,9 @@ def insert_history_record(
     except ApiError:
         raise
     except IntegrityError as exc:
-        raise ApiError(409, "A file with this name already exists. Please generate a new preview.") from exc
+        raise ApiError(
+            409, "A file with this name already exists. Please generate a new preview."
+        ) from exc
     except Exception as exc:
         LOGGER.exception("Failed to insert history record into database")
         raise ApiError(500, "Failed to save confirmed files to database") from exc
@@ -507,7 +535,9 @@ def load_history_filenames() -> list[str]:
     try:
         db_engine = get_database_engine()
         with db_engine.begin() as connection:
-            rows = connection.execute(text("SELECT filename FROM qr_history")).fetchall()
+            rows = connection.execute(
+                text("SELECT filename FROM qr_history")
+            ).fetchall()
             return [str(row[0]) for row in rows]
     except ApiError:
         return []
@@ -559,7 +589,9 @@ def get_draft_dir(draft_id: str) -> Path:
     return TEMP_DIR / draft_id
 
 
-def safe_child_path(base_dir: Path, filename: str, allowed_extensions: set[str]) -> Path:
+def safe_child_path(
+    base_dir: Path, filename: str, allowed_extensions: set[str]
+) -> Path:
     candidate = (base_dir / Path(filename or "").name).resolve()
     base_path = base_dir.resolve()
 
@@ -582,7 +614,9 @@ def read_json_file(file_path: Path) -> dict[str, Any]:
 
 def write_json_file(file_path: Path, payload: dict[str, Any]) -> None:
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+    file_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8"
+    )
 
 
 def read_draft_metadata(draft_id: str) -> dict[str, Any]:
@@ -605,7 +639,7 @@ def remove_draft(draft_id: str) -> None:
 
 def sanitize_company_code(value: str) -> str:
     sanitized = re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
-    return (sanitized[:10] or "VER")
+    return sanitized[:10] or "VER"
 
 
 def get_mode_code(mode: str) -> str:
@@ -638,7 +672,9 @@ def extract_lot_number_from_filename(
     return int(file_lot)
 
 
-def collect_reserved_lot_numbers(company_code: str, mode_code: str, qr_size_code: str) -> set[int]:
+def collect_reserved_lot_numbers(
+    company_code: str, mode_code: str, qr_size_code: str
+) -> set[int]:
     reserved: set[int] = set()
     for meta_path in TEMP_DIR.glob(f"*/{DRAFT_META_FILENAME}"):
         try:
@@ -680,7 +716,9 @@ def get_next_lot_no(company_code: str, mode_code: str, qr_size_code: str) -> str
         if lot_number is not None:
             max_lot = max(max_lot, lot_number)
 
-    for lot_number in collect_reserved_lot_numbers(company_code, mode_code, qr_size_code):
+    for lot_number in collect_reserved_lot_numbers(
+        company_code, mode_code, qr_size_code
+    ):
         max_lot = max(max_lot, lot_number)
 
     return str(max_lot + 1).zfill(4)
@@ -696,7 +734,11 @@ def generate_codes(config: GenerateConfig) -> list[str]:
     else:
         while len(codes) < config.quantity:
             digits = "".join(str(RNG.randint(0, 9)) for _ in range(config.digit))
-            code = f"{config.prefix}{config.separator}{digits}" if config.prefix else digits
+            code = (
+                f"{config.prefix}{config.separator}{digits}"
+                if config.prefix
+                else digits
+            )
             codes.add(code)
 
     return sorted(codes)
@@ -726,7 +768,9 @@ async def save_logo_file(logo: UploadFile, target_dir: Path) -> Path:
     return logo_path
 
 
-def generate_qr_image(code: str, qr_dir: Path, logo_path: Path | None = None) -> tuple[Path, str]:
+def generate_qr_image(
+    code: str, qr_dir: Path, logo_path: Path | None = None
+) -> tuple[Path, str]:
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -745,12 +789,17 @@ def generate_qr_image(code: str, qr_dir: Path, logo_path: Path | None = None) ->
             logo_image.thumbnail((max_logo_size, max_logo_size), Image.LANCZOS)
 
             background_size = int(max(logo_image.size) * 1.2)
-            background = Image.new("RGBA", (background_size, background_size), (255, 255, 255, 255))
+            background = Image.new(
+                "RGBA", (background_size, background_size), (255, 255, 255, 255)
+            )
             paste_x = (background_size - logo_image.width) // 2
             paste_y = (background_size - logo_image.height) // 2
             background.paste(logo_image, (paste_x, paste_y), logo_image)
 
-            qr_position = ((qr_width - background_size) // 2, (qr_height - background_size) // 2)
+            qr_position = (
+                (qr_width - background_size) // 2,
+                (qr_height - background_size) // 2,
+            )
             qr_image.paste(background, qr_position, background)
 
     safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")[:80] or "qr"
@@ -768,6 +817,35 @@ def try_register_mitr_fonts(pdf: FPDF) -> bool:
         pdf.add_font("Mitr", "B", str(bold_path), uni=True)
         return True
     return False
+
+
+def draw_label_outline(
+    pdf: FPDF,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    radius: float,
+) -> None:
+    if radius <= 0:
+        pdf.rect(x, y, width, height)
+        return
+
+    try:
+        pdf.rect(
+            x,
+            y,
+            width,
+            height,
+            round_corners=True,
+            corner_radius=radius,
+        )
+    except TypeError:
+        rounded_rect = getattr(pdf, "rounded_rect", None)
+        if callable(rounded_rect):
+            rounded_rect(x, y, width, height, radius)
+        else:
+            pdf.rect(x, y, width, height)
 
 
 def create_pdf_layout(
@@ -793,6 +871,7 @@ def create_pdf_layout(
 
     label_width = config["label_w"]
     label_height = config["label_h"]
+    label_radius = config["label_radius"]
     qr_size = config["qr_w"]
     column_count = config["cols"]
     gap_x = config["gap_x"]
@@ -817,7 +896,7 @@ def create_pdf_layout(
 
     for page_index in range(total_pages):
         pdf.add_page()
-        page_codes = codes[page_index * per_page:(page_index + 1) * per_page]
+        page_codes = codes[page_index * per_page : (page_index + 1) * per_page]
 
         for index, code_data in enumerate(page_codes):
             column = index % column_count
@@ -826,7 +905,7 @@ def create_pdf_layout(
             y = start_y + (row * step_y)
 
             pdf.set_draw_color(200, 200, 200)
-            pdf.rect(x, y, label_width, label_height)
+            draw_label_outline(pdf, x, y, label_width, label_height, label_radius)
 
             image_path = qr_dir / f"{code_data['safe_name']}.png"
             if not image_path.exists():
@@ -849,11 +928,18 @@ def create_pdf_layout(
                 qr_y = y + (label_height - qr_size) / 2
                 text_x = qr_x + qr_size + 1
                 pdf.set_xy(text_x, y)
-                pdf.cell(label_width - qr_size - 2, label_height, code_data["code"], align="L")
+                pdf.cell(
+                    label_width - qr_size - 2,
+                    label_height,
+                    code_data["code"],
+                    align="L",
+                )
 
             pdf.image(str(image_path), x=qr_x, y=qr_y, w=qr_size, h=qr_size)
 
-        stock_code = f"{company_code}-{lot_number}-{mode_code}-{qr_size_code}-{page_index + 1}"
+        stock_code = (
+            f"{company_code}-{lot_number}-{mode_code}-{qr_size_code}-{page_index + 1}"
+        )
         pdf.set_font("Arial", "B", 16)
         pdf.set_xy(margin_x, page_height - 15)
         pdf.cell(page_width - (margin_x * 2), 8, stock_code, align="R")
@@ -869,7 +955,9 @@ def create_pdf_layout(
     return filename
 
 
-def export_codes_file(codes: list[str], pdf_filename: str, output_dir: Path) -> tuple[str, str | None]:
+def export_codes_file(
+    codes: list[str], pdf_filename: str, output_dir: Path
+) -> tuple[str, str | None]:
     base_name = Path(pdf_filename).stem
     export_warning = None
     dataframe = pd.DataFrame(codes, columns=["Unique_Code"])
@@ -880,7 +968,9 @@ def export_codes_file(codes: list[str], pdf_filename: str, output_dir: Path) -> 
     else:
         export_filename = f"{base_name}.csv"
         dataframe.to_csv(output_dir / export_filename, index=False)
-        export_warning = "openpyxl is not installed, so the export was generated as CSV."
+        export_warning = (
+            "openpyxl is not installed, so the export was generated as CSV."
+        )
 
     return export_filename, export_warning
 
@@ -901,7 +991,9 @@ def get_draft_asset_urls(
     }
 
 
-def run_generate_job(draft_id: str, config_data: GenerateConfig, logo_path: Path | None = None) -> None:
+def run_generate_job(
+    draft_id: str, config_data: GenerateConfig, logo_path: Path | None = None
+) -> None:
     draft_dir = get_draft_dir(draft_id)
     qr_dir = draft_dir / "qrcodes"
     qr_dir.mkdir(parents=True, exist_ok=True)
@@ -925,7 +1017,9 @@ def run_generate_job(draft_id: str, config_data: GenerateConfig, logo_path: Path
                 config_data.mode,
                 draft_dir,
             )
-            export_filename, export_warning = export_codes_file(raw_codes, pdf_filename, draft_dir)
+            export_filename, export_warning = export_codes_file(
+                raw_codes, pdf_filename, draft_dir
+            )
 
             write_draft_metadata(
                 draft_dir,
@@ -975,7 +1069,9 @@ def find_draft_export(draft_dir: Path, draft_id: str) -> str | None:
         pass
 
     matches = sorted(
-        file.name for file in draft_dir.iterdir() if file.is_file() and file.suffix.lower() in {".xlsx", ".csv"}
+        file.name
+        for file in draft_dir.iterdir()
+        if file.is_file() and file.suffix.lower() in {".xlsx", ".csv"}
     )
     return matches[0] if matches else None
 
@@ -1009,7 +1105,9 @@ async def generate(
             },
         )
 
-        background_tasks.add_task(run_generate_job, active_draft_id, config_data, logo_path)
+        background_tasks.add_task(
+            run_generate_job, active_draft_id, config_data, logo_path
+        )
 
         return api_success(
             {
@@ -1018,7 +1116,9 @@ async def generate(
                 "filename": "",
                 "codes": [],
                 "warning": "",
-                "pdf_url": build_file_url(request, f"/draft/preview/{active_draft_id}", "preview.pdf"),
+                "pdf_url": build_file_url(
+                    request, f"/draft/preview/{active_draft_id}", "preview.pdf"
+                ),
                 "excel_url": None,
             },
             status_code=202,
@@ -1047,18 +1147,24 @@ def draft_status(draft_id: str, request: Request) -> JSONResponse:
         try:
             metadata = read_draft_metadata(draft_id)
             if metadata.get("status") == "error":
-                return api_error(500, metadata.get("error") or "Failed to generate preview")
+                return api_error(
+                    500, metadata.get("error") or "Failed to generate preview"
+                )
         except FileNotFoundError:
             metadata = {}
 
         pdf_filename = find_draft_pdf(draft_dir, draft_id)
         export_filename = find_draft_export(draft_dir, draft_id)
         if not pdf_filename:
-            return api_success({"ready": False, "status": metadata.get("status") or "processing"})
+            return api_success(
+                {"ready": False, "status": metadata.get("status") or "processing"}
+            )
 
         pdf_path = safe_child_path(draft_dir, pdf_filename, {".pdf"})
         if not pdf_path.exists():
-            return api_success({"ready": False, "status": metadata.get("status") or "processing"})
+            return api_success(
+                {"ready": False, "status": metadata.get("status") or "processing"}
+            )
 
         return api_success(
             {
@@ -1067,7 +1173,9 @@ def draft_status(draft_id: str, request: Request) -> JSONResponse:
                 "draft_id": draft_id,
                 "filename": pdf_filename,
                 "warning": metadata.get("warning"),
-                **get_draft_asset_urls(request, draft_id, pdf_filename, export_filename),
+                **get_draft_asset_urls(
+                    request, draft_id, pdf_filename, export_filename
+                ),
             }
         )
     except ApiError as exc:
@@ -1077,7 +1185,9 @@ def draft_status(draft_id: str, request: Request) -> JSONResponse:
         return api_error(500, "Failed to read draft status")
 
 
-@app.api_route("/draft/preview/{draft_id}/{filename}", methods=["GET", "HEAD"], response_model=None)
+@app.api_route(
+    "/draft/preview/{draft_id}/{filename}", methods=["GET", "HEAD"], response_model=None
+)
 def draft_preview(draft_id: str, filename: str):
     try:
         draft_dir = get_draft_dir(draft_id)
@@ -1102,7 +1212,9 @@ def draft_preview(draft_id: str, filename: str):
         return api_error(500, "Failed to serve draft preview")
 
 
-@app.api_route("/draft/export/{draft_id}/{filename}", methods=["GET", "HEAD"], response_model=None)
+@app.api_route(
+    "/draft/export/{draft_id}/{filename}", methods=["GET", "HEAD"], response_model=None
+)
 def draft_export(draft_id: str, filename: str):
     try:
         draft_dir = get_draft_dir(draft_id)
@@ -1113,7 +1225,9 @@ def draft_export(draft_id: str, filename: str):
         if not file_path.exists():
             return api_error(404, "Draft export not found")
 
-        media_type = CSV_MIME_TYPE if file_path.suffix.lower() == ".csv" else XLSX_MIME_TYPE
+        media_type = (
+            CSV_MIME_TYPE if file_path.suffix.lower() == ".csv" else XLSX_MIME_TYPE
+        )
         return FileResponse(file_path, media_type=media_type)
     except ApiError as exc:
         return api_error(exc.status_code, exc.message, details=exc.details)
@@ -1145,7 +1259,9 @@ def confirm_draft(draft_id: str, request: Request) -> JSONResponse:
         export_mime_type = None
         export_url = None
         if export_filename:
-            draft_export_path = safe_child_path(draft_dir, export_filename, {".xlsx", ".csv"})
+            draft_export_path = safe_child_path(
+                draft_dir, export_filename, {".xlsx", ".csv"}
+            )
             if draft_export_path.exists():
                 export_data = draft_export_path.read_bytes()
                 export_mime_type = get_export_mime_type(export_filename)
@@ -1216,15 +1332,7 @@ def get_history(request: Request) -> JSONResponse:
             if record.get("filename")
         ]
 
-        return api_success(
-            {
-                "files": [
-                    file
-                    for file in files
-                    if file["filename"]
-                ]
-            }
-        )
+        return api_success({"files": [file for file in files if file["filename"]]})
     except ApiError as exc:
         return api_error(exc.status_code, exc.message, details=exc.details)
     except Exception:
@@ -1262,7 +1370,9 @@ def db_pdf(filename: str):
         return Response(
             content=pdf_data,
             media_type=PDF_MIME_TYPE,
-            headers={"Content-Disposition": content_disposition("inline", safe_filename)},
+            headers={
+                "Content-Disposition": content_disposition("inline", safe_filename)
+            },
         )
     except ApiError as exc:
         return api_error(exc.status_code, exc.message, details=exc.details)
@@ -1282,7 +1392,9 @@ def db_export(filename: str):
         return Response(
             content=export_data,
             media_type=export_mime_type,
-            headers={"Content-Disposition": content_disposition("attachment", safe_filename)},
+            headers={
+                "Content-Disposition": content_disposition("attachment", safe_filename)
+            },
         )
     except ApiError as exc:
         return api_error(exc.status_code, exc.message, details=exc.details)
@@ -1311,7 +1423,9 @@ def preview_excel(filename: str):
         file_path = safe_child_path(EXCEL_DIR, filename, {".xlsx", ".csv"})
         if not file_path.exists():
             return api_error(404, "Export file not found")
-        media_type = CSV_MIME_TYPE if file_path.suffix.lower() == ".csv" else XLSX_MIME_TYPE
+        media_type = (
+            CSV_MIME_TYPE if file_path.suffix.lower() == ".csv" else XLSX_MIME_TYPE
+        )
         return FileResponse(file_path, media_type=media_type)
     except ApiError as exc:
         return api_error(exc.status_code, exc.message, details=exc.details)
