@@ -69,7 +69,7 @@ SIZE_CODE_MAP = {
     "SS": "SS",
 }
 
-LABEL_BORDER_RADIUS = 2
+LABEL_BORDER_RADIUS = 1
 
 LAYOUT_CONFIG = {
     "STD": {
@@ -132,7 +132,7 @@ class ApiError(Exception):
 
 
 class GenerateConfig(BaseModel):
-    mode: str = Field(default="Auto Generate")
+    mode: str = Field(default="Normal Generate")
     size: str = Field(default="STD")
     quantity: int = Field(default=10, ge=1, le=MAX_QUANTITY)
     digit: int = Field(default=8, ge=1, le=MAX_DIGITS)
@@ -142,9 +142,9 @@ class GenerateConfig(BaseModel):
     @field_validator("mode", mode="before")
     @classmethod
     def normalize_mode(cls, value: Any) -> str:
-        normalized = str(value or "Auto Generate").strip()
-        if normalized not in {"Auto Generate", "Custom Format"}:
-            return "Auto Generate"
+        normalized = str(value or "Normal Generate").strip()
+        if normalized not in {"Normal Generate", "Custom Format"}:
+            return "Normal Generate"
         return normalized
 
     @field_validator("size", mode="before")
@@ -643,7 +643,7 @@ def sanitize_company_code(value: str) -> str:
 
 
 def get_mode_code(mode: str) -> str:
-    return "C" if str(mode).strip() == "Custom Format" else "A"
+    return "C" if str(mode).strip() == "Custom Format" else "S"
 
 
 def get_qr_size_code(size_type: str) -> str:
@@ -727,7 +727,7 @@ def get_next_lot_no(company_code: str, mode_code: str, qr_size_code: str) -> str
 def generate_codes(config: GenerateConfig) -> list[str]:
     codes: set[str] = set()
 
-    if config.mode == "Auto Generate":
+    if config.mode == "Normal Generate":
         while len(codes) < config.quantity:
             raw_number = "".join(str(RNG.randint(0, 9)) for _ in range(11))
             codes.add(f"{raw_number[:3]}-{raw_number[3:7]}-{raw_number[7:]}")

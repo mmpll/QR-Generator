@@ -489,7 +489,7 @@
         if (rangeDisplay) {
             if (!ready) {
                 rangeDisplay.innerText = "0 -> 0";
-            } else if (config.mode === "Auto Generate") {
+            } else if (config.mode === "Normal Generate") {
                 rangeDisplay.innerText = "Unique Random 11 Digits (xxx-xxxx-xxxx)";
             } else {
                 const displayPrefix = config.prefix || "HOD";
