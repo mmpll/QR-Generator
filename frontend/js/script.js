@@ -2,7 +2,7 @@
     const STORAGE_KEY = "qr_generator_job_state";
     const API_BASE_STORAGE_KEY = "qr_api_base";
     const MAX_QUANTITY = 5000;
-    const MAX_DIGITS = 32;
+    const MAX_DIGITS = 12;
     const MAX_LOGO_BYTES = 5 * 1024 * 1024;
     const REQUEST_TIMEOUT_MS = 15000;
     const DRAFT_STATUS_POLL_MS = 2500;

@@ -53,8 +53,8 @@ TEMP_DIR = BASE_DIR / "temp"
 DRAFT_META_FILENAME = "meta.json"
 
 MAX_QUANTITY = 5000
-MAX_DIGITS = 32
-MAX_PREFIX_LENGTH = 20
+MAX_DIGITS = 12
+MAX_PREFIX_LENGTH = 8
 MAX_LOGO_BYTES = 5 * 1024 * 1024
 ALLOWED_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
@@ -70,6 +70,13 @@ SIZE_CODE_MAP = {
 }
 
 LABEL_BORDER_RADIUS = 1
+PDF_POINT_TO_MM = 0.352778
+CODE_TEXT_PADDING = 1
+CODE_LINE_HEIGHT_MULTIPLIER = 1.08
+MIN_CODE_FONT_SIZE = 4
+STD_CODE_TOP_OFFSET = 1.5
+STD_QR_TOP_OFFSET = 6
+LOGO_GAP = 0.4
 
 LAYOUT_CONFIG = {
     "STD": {
@@ -268,16 +275,12 @@ def get_existing_history_columns(connection) -> set[str]:
         return set()
 
     if engine.dialect.name.startswith("mysql"):
-        rows = connection.execute(
-            text(
-                """
+        rows = connection.execute(text("""
                 SELECT COLUMN_NAME
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_SCHEMA = DATABASE()
                   AND TABLE_NAME = 'qr_history'
-                """
-            )
-        )
+                """))
         return {str(row[0]) for row in rows}
 
     rows = connection.execute(text("PRAGMA table_info(qr_history)"))
@@ -459,8 +462,7 @@ def insert_history_record(
                 )
 
             connection.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO qr_history (
                         filename,
                         export_filename,
@@ -475,8 +477,7 @@ def insert_history_record(
                         :export_data,
                         :export_mime_type
                     )
-                    """
-                ),
+                    """),
                 {
                     "filename": filename,
                     "export_filename": export_filename,
@@ -516,15 +517,11 @@ def load_history_records() -> list[dict[str, Any]]:
 
     try:
         with db_engine.begin() as connection:
-            rows = connection.execute(
-                text(
-                    """
+            rows = connection.execute(text("""
                     SELECT filename, export_filename, created_at
                     FROM qr_history
                     ORDER BY created_at DESC, id DESC
-                    """
-                )
-            ).mappings()
+                    """)).mappings()
             return [dict(row) for row in rows]
     except Exception as exc:
         LOGGER.exception("Failed to load history records from database")
@@ -563,14 +560,12 @@ def load_export_data(filename: str) -> tuple[bytes, str]:
     db_engine = get_database_engine()
     with db_engine.begin() as connection:
         row = connection.execute(
-            text(
-                """
+            text("""
                 SELECT export_data, export_mime_type
                 FROM qr_history
                 WHERE export_filename = :filename
                 LIMIT 1
-                """
-            ),
+                """),
             {"filename": filename},
         ).first()
 
@@ -768,9 +763,7 @@ async def save_logo_file(logo: UploadFile, target_dir: Path) -> Path:
     return logo_path
 
 
-def generate_qr_image(
-    code: str, qr_dir: Path, logo_path: Path | None = None
-) -> tuple[Path, str]:
+def generate_qr_image(code: str, qr_dir: Path) -> tuple[Path, str]:
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -782,31 +775,21 @@ def generate_qr_image(
 
     qr_image = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
 
-    if logo_path and logo_path.exists():
-        with Image.open(logo_path).convert("RGBA") as logo_image:
-            qr_width, qr_height = qr_image.size
-            max_logo_size = max(24, qr_width // 4)
-            logo_image.thumbnail((max_logo_size, max_logo_size), Image.LANCZOS)
-
-            background_size = int(max(logo_image.size) * 1.2)
-            background = Image.new(
-                "RGBA", (background_size, background_size), (255, 255, 255, 255)
-            )
-            paste_x = (background_size - logo_image.width) // 2
-            paste_y = (background_size - logo_image.height) // 2
-            background.paste(logo_image, (paste_x, paste_y), logo_image)
-
-            qr_position = (
-                (qr_width - background_size) // 2,
-                (qr_height - background_size) // 2,
-            )
-            qr_image.paste(background, qr_position, background)
-
     safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")[:80] or "qr"
     unique_name = f"{safe_name}_{uuid.uuid4().hex[:10]}"
     file_path = qr_dir / f"{unique_name}.png"
     qr_image.save(file_path)
     return file_path, unique_name
+
+
+def prepare_logo_for_pdf(logo_path: Path | None, output_dir: Path) -> Path | None:
+    if not logo_path or not logo_path.exists():
+        return None
+
+    pdf_logo_path = output_dir / f"{logo_path.stem}_pdf.png"
+    with Image.open(logo_path).convert("RGBA") as logo_image:
+        logo_image.save(pdf_logo_path)
+    return pdf_logo_path
 
 
 def try_register_mitr_fonts(pdf: FPDF) -> bool:
@@ -848,6 +831,110 @@ def draw_label_outline(
             pdf.rect(x, y, width, height)
 
 
+def wrap_text_to_width(pdf: FPDF, text: str, max_width: float) -> list[str]:
+    content = str(text or "")
+    if not content or max_width <= 0:
+        return [content]
+
+    lines: list[str] = []
+    current_line = ""
+
+    for character in content:
+        candidate = f"{current_line}{character}"
+        if current_line and pdf.get_string_width(candidate) > max_width:
+            lines.append(current_line)
+            current_line = character
+        else:
+            current_line = candidate
+
+    if current_line or not lines:
+        lines.append(current_line)
+
+    return lines
+
+
+def code_line_height(font_size: int) -> float:
+    return font_size * PDF_POINT_TO_MM * CODE_LINE_HEIGHT_MULTIPLIER
+
+
+def fit_code_text(
+    pdf: FPDF,
+    text: str,
+    max_width: float,
+    max_height: float,
+    font_family: str,
+    initial_font_size: int,
+) -> tuple[list[str], float]:
+    for font_size in range(initial_font_size, MIN_CODE_FONT_SIZE - 1, -1):
+        pdf.set_font(font_family, size=font_size)
+        lines = wrap_text_to_width(pdf, text, max_width)
+        line_height = code_line_height(font_size)
+        if len(lines) * line_height <= max_height:
+            return lines, line_height
+
+    pdf.set_font(font_family, size=MIN_CODE_FONT_SIZE)
+    lines = wrap_text_to_width(pdf, text, max_width)
+    line_height = code_line_height(MIN_CODE_FONT_SIZE)
+    visible_line_count = max(1, int(max_height // line_height))
+    return (
+        lines[:visible_line_count],
+        line_height,
+    )
+
+
+def draw_wrapped_code_text(
+    pdf: FPDF,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    text: str,
+    font_family: str,
+    font_size: int,
+    align: str,
+) -> None:
+    lines, line_height = fit_code_text(pdf, text, width, height, font_family, font_size)
+    total_text_height = len(lines) * line_height
+    current_y = y + max(0, (height - total_text_height) / 2)
+
+    for line in lines:
+        pdf.set_xy(x, current_y)
+        pdf.cell(width, line_height, line, align=align)
+        current_y += line_height
+
+
+def contained_image_size(
+    image_size: tuple[int, int], max_width: float, max_height: float
+) -> tuple[float, float]:
+    image_width, image_height = image_size
+    if image_width <= 0 or image_height <= 0 or max_width <= 0 or max_height <= 0:
+        return 0, 0
+
+    ratio = min(max_width / image_width, max_height / image_height)
+    return image_width * ratio, image_height * ratio
+
+
+def draw_logo_below_code(
+    pdf: FPDF,
+    logo_path: Path | None,
+    logo_size: tuple[int, int] | None,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+) -> None:
+    if not logo_path or not logo_size or width <= 0 or height <= 0:
+        return
+
+    logo_width, logo_height = contained_image_size(logo_size, width, height)
+    if logo_width <= 0 or logo_height <= 0:
+        return
+
+    logo_x = x + ((width - logo_width) / 2)
+    logo_y = y + ((height - logo_height) / 2)
+    pdf.image(str(logo_path), x=logo_x, y=logo_y, w=logo_width, h=logo_height)
+
+
 def create_pdf_layout(
     codes: list[dict[str, str]],
     qr_dir: Path,
@@ -855,6 +942,7 @@ def create_pdf_layout(
     prefix: str,
     mode: str,
     output_dir: Path,
+    logo_path: Path | None = None,
 ) -> str:
     config = LAYOUT_CONFIG[size_type]
     orientation = config["orientation"]
@@ -893,6 +981,10 @@ def create_pdf_layout(
     grid_height = (row_count * label_height) + ((row_count - 1) * gap_y)
     start_x = max(margin_x, (page_width - grid_width) / 2)
     start_y = max(margin_top, (page_height - grid_height) / 2)
+    logo_size: tuple[int, int] | None = None
+    if logo_path and logo_path.exists():
+        with Image.open(logo_path) as logo_image:
+            logo_size = logo_image.size
 
     for page_index in range(total_pages):
         pdf.add_page()
@@ -911,31 +1003,83 @@ def create_pdf_layout(
             if not image_path.exists():
                 continue
 
-            if has_mitr_font:
-                font_size = 6 if size_type == "SS" else 7 if size_type == "S" else 8
-                pdf.set_font("Mitr", size=font_size)
-            else:
-                font_size = 6 if size_type == "SS" else 7 if size_type == "S" else 8
-                pdf.set_font("Arial", size=font_size)
+            font_family = "Mitr" if has_mitr_font else "Arial"
+            font_size = 6 if size_type == "SS" else 7 if size_type == "S" else 8
+            pdf.set_font(font_family, size=font_size)
 
             if size_type == "STD":
-                pdf.set_xy(x, y + 1.5)
-                pdf.cell(label_width, 4, code_data["code"], align="C")
-                qr_x = x + (label_width - qr_size) / 2
-                qr_y = y + 6
-            else:
-                qr_x = x + 1
-                qr_y = y + (label_height - qr_size) / 2
-                text_x = qr_x + qr_size + 1
-                pdf.set_xy(text_x, y)
-                pdf.cell(
-                    label_width - qr_size - 2,
-                    label_height,
+                text_x = x + CODE_TEXT_PADDING
+                text_y = y + STD_CODE_TOP_OFFSET
+                text_width = label_width - (CODE_TEXT_PADDING * 2)
+                logo_height = min(4, label_height * 0.14) if logo_size else 0
+                logo_y = text_y + 3.5 + LOGO_GAP
+                qr_y = (
+                    logo_y + logo_height + LOGO_GAP
+                    if logo_size
+                    else y + STD_QR_TOP_OFFSET
+                )
+                qr_draw_size = min(
+                    qr_size,
+                    label_width - (CODE_TEXT_PADDING * 2),
+                    y + label_height - CODE_TEXT_PADDING - qr_y,
+                )
+                qr_x = x + (label_width - qr_draw_size) / 2
+                text_height = max(1, logo_y - text_y - LOGO_GAP)
+                draw_wrapped_code_text(
+                    pdf,
+                    text_x,
+                    text_y,
+                    text_width,
+                    text_height,
                     code_data["code"],
-                    align="L",
+                    font_family,
+                    font_size,
+                    "C",
+                )
+                draw_logo_below_code(
+                    pdf,
+                    logo_path,
+                    logo_size,
+                    text_x,
+                    logo_y,
+                    text_width,
+                    logo_height,
+                )
+            else:
+                qr_x = x + CODE_TEXT_PADDING
+                qr_y = y + (label_height - qr_size) / 2
+                qr_draw_size = qr_size
+                text_x = qr_x + qr_size + CODE_TEXT_PADDING
+                text_y = y + (CODE_TEXT_PADDING / 2)
+                text_width = x + label_width - CODE_TEXT_PADDING - text_x
+                logo_height = min(6, label_height * 0.35) if logo_size else 0
+                text_height = (
+                    label_height - CODE_TEXT_PADDING - logo_height - LOGO_GAP
+                    if logo_size
+                    else label_height - CODE_TEXT_PADDING
+                )
+                draw_wrapped_code_text(
+                    pdf,
+                    text_x,
+                    text_y,
+                    text_width,
+                    text_height,
+                    code_data["code"],
+                    font_family,
+                    font_size,
+                    "L",
+                )
+                draw_logo_below_code(
+                    pdf,
+                    logo_path,
+                    logo_size,
+                    text_x,
+                    text_y + text_height + LOGO_GAP,
+                    text_width,
+                    logo_height,
                 )
 
-            pdf.image(str(image_path), x=qr_x, y=qr_y, w=qr_size, h=qr_size)
+            pdf.image(str(image_path), x=qr_x, y=qr_y, w=qr_draw_size, h=qr_draw_size)
 
         stock_code = (
             f"{company_code}-{lot_number}-{mode_code}-{qr_size_code}-{page_index + 1}"
@@ -1001,9 +1145,10 @@ def run_generate_job(
     try:
         raw_codes = generate_codes(config_data)
         rendered_codes: list[dict[str, str]] = []
+        pdf_logo_path = prepare_logo_for_pdf(logo_path, draft_dir)
 
         for code in raw_codes:
-            _, safe_name = generate_qr_image(code, qr_dir, logo_path)
+            _, safe_name = generate_qr_image(code, qr_dir)
             rendered_codes.append({"code": code, "safe_name": safe_name})
 
         # Lot numbers are derived from existing output. Keep this section serialized so
@@ -1016,6 +1161,7 @@ def run_generate_job(
                 config_data.prefix,
                 config_data.mode,
                 draft_dir,
+                pdf_logo_path,
             )
             export_filename, export_warning = export_codes_file(
                 raw_codes, pdf_filename, draft_dir
